@@ -32,8 +32,8 @@ func NewDockerfileGenerator(config *config.Config, m *manifest.Manifest, tmpl *t
 	}
 }
 
-func (g *DockerfileGenerator) GenerateDockerFile() error {
-	lines, err := g.buildDockerfile()
+func (g *DockerfileGenerator) GenerateDockerFile(opts BuildAdditionalOptions) error {
+	lines, err := g.buildDockerfile(opts)
 	if err != nil {
 		return errors.Wrap(err, "error generating the Dockerfile")
 	}
@@ -49,7 +49,7 @@ func (g *DockerfileGenerator) GenerateDockerFile() error {
 	return errors.Wrap(err, "couldn't write the Dockerfile")
 }
 
-func (g *DockerfileGenerator) buildDockerfile() ([]string, error) {
+func (g *DockerfileGenerator) buildDockerfile(opts BuildAdditionalOptions) ([]string, error) {
 	fmt.Fprintf(g.Out, "\nGenerating Dockerfile =======>\n")
 
 	lines, err := g.getBaseDockerfile()
@@ -75,6 +75,12 @@ func (g *DockerfileGenerator) buildDockerfile() ([]string, error) {
 	lines = append(lines, g.buildPorterSection()...)
 	lines = append(lines, g.buildCNABSection()...)
 	lines = append(lines, g.buildWORKDIRSection())
+	if opts.Secret.ID != "" && opts.Secret.FilePath != "" {
+		lines = append(lines, g.buildSecretSection(opts.Secret.ID, opts.Secret.FilePath))
+	}
+	if opts.SSH.ID != "" && len(opts.SSH.Paths) > 0 {
+		lines = append(lines, g.buildSSHSection(opts.SSH.ID, opts.SSH.Paths))
+	}
 	lines = append(lines, g.buildCMDSection())
 
 	if g.IsVerbose() {
@@ -165,6 +171,14 @@ func (g *DockerfileGenerator) buildCNABSection() []string {
 		`RUN rm -fr $BUNDLE_DIR/.cnab`,
 		`COPY .cnab /cnab`,
 	}
+}
+
+func (g *DockerfileGenerator) buildSecretSection(id string, target string) string {
+	return fmt.Sprintf("RUN --mount=type=secret,id=%s,target=%s", id, target)
+}
+
+func (g *DockerfileGenerator) buildSSHSection(id string, target []string) string {
+	return fmt.Sprintf("RUN --mount=type=ssh,id=%s,target=%s", id, target)
 }
 
 func (g *DockerfileGenerator) buildWORKDIRSection() string {

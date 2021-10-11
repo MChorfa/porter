@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.2
+# syntax=docker/dockerfile:1.3
 FROM debian:stretch-slim
 
 ARG BUNDLE_DIR

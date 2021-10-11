@@ -58,6 +58,9 @@ func buildBundleBuildCommand(p *porter.Porter) *cobra.Command {
   porter build --version 0.1.0
   porter build --file path/to/porter.yaml
   porter build --dir path/to/build/context
+  porter build --ssh default=$SSH_AUTH_SOCK
+  porter build --secret id=azure,src=$HOME/.azure/credentials
+  porter build --build-arg VERSION=1.2.3
 `,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return opts.Validate(p)
@@ -76,6 +79,8 @@ func buildBundleBuildCommand(p *porter.Porter) *cobra.Command {
 		"Path to the Porter manifest. Defaults to `porter.yaml` in the current directory.")
 	f.StringVarP(&opts.Dir, "dir", "d", "",
 		"Path to the build context directory where all bundle assets are located.")
+	f.StringSliceVar(&opts.Secret, "secret", []string{}, "Experimental. Secret value exposed to the build. Format id=secretname,src=filepath")
+	f.StringSliceVar(&opts.SSH, "ssh", []string{}, "Experimental. Allow forwarding SSH agent to the builder. Format default|<id>[=<socket>|<key>[,<key>]]")
 	f.StringVar(&opts.Driver, "driver", porter.BuildDriverDefault,
 		fmt.Sprintf("Experimental. Driver for building the invocation image. Allowed values are: %s", strings.Join(porter.BuildDriverAllowedValues, ", ")))
 

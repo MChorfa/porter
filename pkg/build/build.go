@@ -43,3 +43,23 @@ type Builder interface {
 	// TagInvocationImage using the origTag and newTag values supplied
 	TagInvocationImage(origTag, newTag string) error
 }
+
+type BuildAdditionalOptions struct {
+
+	// Secret to be mounted within the bundle
+	Secret SecretConfig
+
+	// SSH to be mounted within the bundle
+	SSH SSHConfig
+}
+
+type SecretConfig struct {
+	ID       string
+	FilePath string
+}
+
+// AgentConfig is the config for a single exposed SSH agent
+type SSHConfig struct {
+	ID    string
+	Paths []string
+}

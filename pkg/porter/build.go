@@ -1,8 +1,10 @@
 package porter
 
 import (
+	"encoding/csv"
 	"fmt"
 	"os"
+	"strings"
 
 	"get.porter.sh/porter/pkg/build"
 	"get.porter.sh/porter/pkg/cnab"
@@ -25,11 +27,18 @@ type BuildOptions struct {
 
 	// Driver to use when building the invocation image.
 	Driver string
+
+	// Secret to be mounted within the bundle
+	Secret []string
+
+	// SSH to be mounted within the bundle
+	SSH []string
 }
 
 const BuildDriverDefault = config.BuildDriverDocker
 
 var BuildDriverAllowedValues = []string{config.BuildDriverDocker, config.BuildDriverBuildkit}
+var BuildAdditionalOptions build.BuildAdditionalOptions
 
 func (o *BuildOptions) Validate(p *Porter) error {
 	if o.Version != "" {
@@ -45,6 +54,24 @@ func (o *BuildOptions) Validate(p *Porter) error {
 	}
 	if !stringSliceContains(BuildDriverAllowedValues, o.Driver) {
 		return errors.Errorf("invalid --driver value %s", o.Driver)
+	}
+
+	if len(o.Secret) > 0 {
+		secretObj, err := parseSecret2(o.Secret)
+		if err != nil {
+			return errors.Errorf("invalid --secret value %s", o.Secret)
+		}
+		BuildAdditionalOptions.Secret.ID = secretObj[0].ID
+		BuildAdditionalOptions.Secret.FilePath = secretObj[0].Paths[0]
+	}
+
+	if len(o.SSH) > 0 {
+		sshObj, err := ParseSSH(o.SSH)
+		if err != nil {
+			return errors.Errorf("invalid --ssh value %s", o.SSH)
+		}
+		BuildAdditionalOptions.SSH.ID = sshObj[0].ID
+		BuildAdditionalOptions.SSH.Paths = sshObj[0].Paths
 	}
 
 	// Syncing value back to the config and we will always use the config
@@ -112,7 +139,7 @@ func (p *Porter) Build(opts BuildOptions) error {
 	if err := generator.PrepareFilesystem(); err != nil {
 		return fmt.Errorf("unable to copy run script, runtimes or mixins: %s", err)
 	}
-	if err := generator.GenerateDockerFile(); err != nil {
+	if err := generator.GenerateDockerFile(BuildAdditionalOptions); err != nil {
 		return fmt.Errorf("unable to generate Dockerfile: %s", err)
 	}
 
@@ -193,4 +220,67 @@ func (p Porter) writeBundle(b cnab.ExtendedBundle) error {
 	}
 	_, err = b.WriteTo(f)
 	return errors.Wrapf(err, "error writing to %s", build.LOCAL_BUNDLE)
+}
+
+// ParseSSH parses --ssh
+func ParseSSH(inp []string) ([]build.SSHConfig, error) {
+	configs := make([]build.SSHConfig, 0, len(inp))
+	for _, v := range inp {
+		parts := strings.SplitN(v, "=", 2)
+		cfg := build.SSHConfig{
+			ID: parts[0],
+		}
+		if len(parts) > 1 {
+			cfg.Paths = strings.Split(parts[1], ",")
+		}
+		configs = append(configs, cfg)
+	}
+	return configs, nil
+}
+
+// ParseSSH parses --ssh
+func parseSecret2(inp []string) ([]build.SSHConfig, error) {
+	configs := make([]build.SSHConfig, 0, len(inp))
+	for _, v := range inp {
+		parts := strings.SplitN(v, "=", 2)
+		cfg := build.SSHConfig{
+			ID: parts[0],
+		}
+		if len(parts) > 1 {
+			cfg.Paths = strings.Split(parts[1], ",")
+		}
+		configs = append(configs, cfg)
+	}
+	return configs, nil
+}
+
+// ParseSecret parses --secret
+func parseSecret(value string) ([]build.SecretConfig, error) {
+	csvReader := csv.NewReader(strings.NewReader(value))
+	fields, err := csvReader.Read()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse csv secret")
+	}
+	fs := make([]build.SecretConfig, 0, 1)
+	for _, field := range fields {
+		parts := strings.SplitN(field, "=", 2)
+		key := strings.ToLower(parts[0])
+
+		if len(parts) != 2 {
+			return nil, errors.Errorf("invalid field '%s' must be a key=value pair", field)
+		}
+
+		value := parts[1]
+		switch key {
+		case "id":
+			fs[0].ID = value
+		case "source", "src":
+			fs[0].FilePath = value
+
+		default:
+			return nil, errors.Errorf("unexpected key '%s' in '%s'", key, field)
+		}
+	}
+
+	return fs, nil
 }

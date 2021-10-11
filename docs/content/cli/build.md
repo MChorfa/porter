@@ -23,6 +23,9 @@ porter build [flags]
   porter build --version 0.1.0
   porter build --file path/to/porter.yaml
   porter build --dir path/to/build/context
+  porter build --ssh default=$SSH_AUTH_SOCK
+  porter build --secret id=azure,src=$HOME/.azure/credentials
+  porter build --build-arg VERSION=1.2.3
 
 ```
 
@@ -35,6 +38,8 @@ porter build [flags]
   -h, --help               help for build
       --name string        Override the bundle name
       --no-lint            Do not run the linter
+      --secret strings     Experimental. Secret value exposed to the build. Format id=secretname,src=filepath
+      --ssh strings        Experimental. Allow forwarding SSH agent to the builder. Format default|<id>[=<socket>|<key>[,<key>]]
   -v, --verbose            Enable verbose logging
       --version string     Override the bundle version
 ```
