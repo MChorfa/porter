@@ -2,11 +2,11 @@
 // source: porter/v1/porter.proto
 
 /*
-Package porter is a reverse proxy.
+Package porterGRPC is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package porter
+package porterGRPC
 
 import (
 	"context"
@@ -210,7 +210,7 @@ func RegisterPorterServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/porter.PorterService/Install", runtime.WithHTTPPathPattern("/api/v1/install"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/porterGRPC.PorterService/Install", runtime.WithHTTPPathPattern("/api/v1/install"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -230,7 +230,7 @@ func RegisterPorterServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/porter.PorterService/Upgrade", runtime.WithHTTPPathPattern("/api/v1/upgrade"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/porterGRPC.PorterService/Upgrade", runtime.WithHTTPPathPattern("/api/v1/upgrade"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -250,7 +250,7 @@ func RegisterPorterServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/porter.PorterService/UnInstall", runtime.WithHTTPPathPattern("/api/v1/uninstall"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/porterGRPC.PorterService/UnInstall", runtime.WithHTTPPathPattern("/api/v1/uninstall"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -270,7 +270,7 @@ func RegisterPorterServiceHandlerClient(ctx context.Context, mux *runtime.ServeM
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/porter.PorterService/Execute", runtime.WithHTTPPathPattern("/api/v1/execute"))
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/porterGRPC.PorterService/Execute", runtime.WithHTTPPathPattern("/api/v1/execute"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return

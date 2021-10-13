@@ -31,13 +31,13 @@
               "type": "object",
               "properties": {
                 "result": {
-                  "$ref": "#/definitions/porterExecuteResponse"
+                  "$ref": "#/definitions/porterGRPCExecuteResponse"
                 },
                 "error": {
                   "$ref": "#/definitions/rpcStatus"
                 }
               },
-              "title": "Stream result of porterExecuteResponse"
+              "title": "Stream result of porterGRPCExecuteResponse"
             }
           },
           "default": {
@@ -53,7 +53,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/porterExecuteRequest"
+              "$ref": "#/definitions/porterGRPCExecuteRequest"
             }
           }
         ],
@@ -74,13 +74,13 @@
               "type": "object",
               "properties": {
                 "result": {
-                  "$ref": "#/definitions/porterIntallResponse"
+                  "$ref": "#/definitions/porterGRPCIntallResponse"
                 },
                 "error": {
                   "$ref": "#/definitions/rpcStatus"
                 }
               },
-              "title": "Stream result of porterIntallResponse"
+              "title": "Stream result of porterGRPCIntallResponse"
             }
           },
           "default": {
@@ -96,7 +96,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/porterIntallRequest"
+              "$ref": "#/definitions/porterGRPCIntallRequest"
             }
           }
         ],
@@ -117,13 +117,13 @@
               "type": "object",
               "properties": {
                 "result": {
-                  "$ref": "#/definitions/porterUnIntallResponse"
+                  "$ref": "#/definitions/porterGRPCUnIntallResponse"
                 },
                 "error": {
                   "$ref": "#/definitions/rpcStatus"
                 }
               },
-              "title": "Stream result of porterUnIntallResponse"
+              "title": "Stream result of porterGRPCUnIntallResponse"
             }
           },
           "default": {
@@ -139,7 +139,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/porterUnIntallRequest"
+              "$ref": "#/definitions/porterGRPCUnIntallRequest"
             }
           }
         ],
@@ -160,13 +160,13 @@
               "type": "object",
               "properties": {
                 "result": {
-                  "$ref": "#/definitions/porterUpgradeResponse"
+                  "$ref": "#/definitions/porterGRPCUpgradeResponse"
                 },
                 "error": {
                   "$ref": "#/definitions/rpcStatus"
                 }
               },
-              "title": "Stream result of porterUpgradeResponse"
+              "title": "Stream result of porterGRPCUpgradeResponse"
             }
           },
           "default": {
@@ -182,7 +182,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/porterUpgradeRequest"
+              "$ref": "#/definitions/porterGRPCUpgradeRequest"
             }
           }
         ],
@@ -193,7 +193,7 @@
     }
   },
   "definitions": {
-    "porterExecuteRequest": {
+    "porterGRPCExecuteRequest": {
       "type": "object",
       "properties": {
         "executing": {
@@ -203,7 +203,7 @@
       },
       "title": "Execute"
     },
-    "porterExecuteResponse": {
+    "porterGRPCExecuteResponse": {
       "type": "object",
       "properties": {
         "output": {
@@ -211,7 +211,7 @@
         }
       }
     },
-    "porterIntallRequest": {
+    "porterGRPCIntallRequest": {
       "type": "object",
       "properties": {
         "installing": {
@@ -221,7 +221,7 @@
       },
       "title": "Install"
     },
-    "porterIntallResponse": {
+    "porterGRPCIntallResponse": {
       "type": "object",
       "properties": {
         "output": {
@@ -229,7 +229,7 @@
         }
       }
     },
-    "porterUnIntallRequest": {
+    "porterGRPCUnIntallRequest": {
       "type": "object",
       "properties": {
         "uninstalling": {
@@ -239,7 +239,7 @@
       },
       "title": "Uninstall"
     },
-    "porterUnIntallResponse": {
+    "porterGRPCUnIntallResponse": {
       "type": "object",
       "properties": {
         "output": {
@@ -247,7 +247,7 @@
         }
       }
     },
-    "porterUpgradeRequest": {
+    "porterGRPCUpgradeRequest": {
       "type": "object",
       "properties": {
         "upgrading": {
@@ -257,7 +257,7 @@
       },
       "title": "Upgrade"
     },
-    "porterUpgradeResponse": {
+    "porterGRPCUpgradeResponse": {
       "type": "object",
       "properties": {
         "output": {

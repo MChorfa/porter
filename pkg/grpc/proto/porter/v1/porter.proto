@@ -1,12 +1,12 @@
 syntax = "proto3";
 
-package porter;
+package porterGRPC;
 
 import "google/api/annotations.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 // Defines the import path that should be used to import the generated package
 // and the package name
-option go_package = "get.porter.sh/porter/pkg/pkg/grpc/proto/porter/v1;porter";
+option go_package = "get.porter.sh/porter/pkg/pkg/grpc/proto/porter/v1;porterGRPC";
 
 
 // These annotations are used when generating the OpenAPI file.
