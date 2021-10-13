@@ -1,0 +1,300 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "porter/v1/porter.proto",
+    "version": "1.0"
+  },
+  "tags": [
+    {
+      "name": "PorterService"
+    }
+  ],
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/v1/execute": {
+      "post": {
+        "summary": "execute action",
+        "description": "perform execute action",
+        "operationId": "PorterService_Execute",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/porterExecuteResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of porterExecuteResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/porterExecuteRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Installations"
+        ]
+      }
+    },
+    "/api/v1/install": {
+      "post": {
+        "summary": "install action",
+        "description": "perform install action",
+        "operationId": "PorterService_Install",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/porterIntallResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of porterIntallResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/porterIntallRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Installations"
+        ]
+      }
+    },
+    "/api/v1/uninstall": {
+      "post": {
+        "summary": "uninstall action",
+        "description": "perform uninstall action",
+        "operationId": "PorterService_UnInstall",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/porterUnIntallResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of porterUnIntallResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/porterUnIntallRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Installations"
+        ]
+      }
+    },
+    "/api/v1/upgrade": {
+      "post": {
+        "summary": "upgrade action",
+        "description": "perform upgrade action",
+        "operationId": "PorterService_Upgrade",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/porterUpgradeResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/rpcStatus"
+                }
+              },
+              "title": "Stream result of porterUpgradeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/porterUpgradeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Installations"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "porterExecuteRequest": {
+      "type": "object",
+      "properties": {
+        "executing": {
+          "type": "string",
+          "format": "byte"
+        }
+      },
+      "title": "Execute"
+    },
+    "porterExecuteResponse": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      }
+    },
+    "porterIntallRequest": {
+      "type": "object",
+      "properties": {
+        "installing": {
+          "type": "string",
+          "format": "byte"
+        }
+      },
+      "title": "Install"
+    },
+    "porterIntallResponse": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      }
+    },
+    "porterUnIntallRequest": {
+      "type": "object",
+      "properties": {
+        "uninstalling": {
+          "type": "string",
+          "format": "byte"
+        }
+      },
+      "title": "Uninstall"
+    },
+    "porterUnIntallResponse": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      }
+    },
+    "porterUpgradeRequest": {
+      "type": "object",
+      "properties": {
+        "upgrading": {
+          "type": "string",
+          "format": "byte"
+        }
+      },
+      "title": "Upgrade"
+    },
+    "porterUpgradeResponse": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "porter docs",
+    "url": "https://porter.sh/docs/"
+  }
+}

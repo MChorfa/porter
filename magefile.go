@@ -58,6 +58,7 @@ func Build() {
 // Build the porter client and runtime
 func BuildPorter() {
 	mgx.Must(releases.BuildAll(PKG, "porter", "bin"))
+	BuildPorterD()
 }
 
 // Build the exec mixin client and runtime
@@ -187,6 +188,11 @@ func TestUnit() {
 
 	// Verify integration tests compile since we don't run them automatically on pull requests
 	must.Run("go", "test", "-run=non", "-tags=integration", "./...")
+}
+
+// Run build/compile PorterD
+func BuildPorterD() {
+	must.RunV("go", "build", "-o", "bin/porterd", "./cmd/porterd")
 }
 
 // Run smoke tests to quickly check if Porter is broken

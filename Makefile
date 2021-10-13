@@ -11,6 +11,8 @@ CLIENT_GOPATH = $(shell go env GOPATH)
 RUNTIME_PLATFORM = linux
 RUNTIME_ARCH = amd64
 PORTER_UPDATE_TEST_FILES ?=
+PORTER_GRPC_PATH="$(PWD)/pkg/grpc"
+PORTER_PROTO_PATH="$(PORTER_GRPC_PATH)/proto/porter/v1"
 
 GO = go
 LOCAL_PORTER = PORTER_HOME=$(PWD)/bin $(PWD)/bin/porter
@@ -146,3 +148,9 @@ clean:
 	go run mage.go clean
 
 
+build-porter-proto:
+	cd $(PORTER_GRPC_PATH) && buf mod update && buf build
+generate-porter-proto: build-porter-proto
+	cd $(PORTER_GRPC_PATH) && buf generate --path $(PORTER_PROTO_PATH)/porter.proto
+clean-porter-proto:
+	rm $(PORTER_PROTO_PATH)/*.go || true
