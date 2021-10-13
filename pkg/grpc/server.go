@@ -9,19 +9,19 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 
-	porterV1 "get.porter.sh/porter/pkg/grpc/proto/porter/v1"
+	porterV1pb "github.com/MChorfa/porter/pkg/grpc/proto/porter/v1"
 )
 
 type server struct {
-	porterV1.UnimplementedPorterServiceServer
+	porterV1pb.UnimplementedPorterServiceServer
 }
 
 func NewServer() *server {
 	return &server{}
 }
 
-func (s *server) SayHello(ctx context.Context, in *porterV1.IntallRequest) (*porterV1.IntallResponse, error) {
-	return &porterV1.IntallResponse{Message: in.body}, nil
+func (s *server) Install(ctx context.Context, in *porterV1pb.IntallRequest) (*porterV1pb.IntallResponse, error) {
+	return &porterV1pb.IntallResponse{Message: in.body}, nil
 }
 func main() {
 	// Create a listener on TCP port
@@ -33,7 +33,7 @@ func main() {
 	// Create a gRPC server object
 	s := grpc.NewServer()
 	// Attach the Greeter service to the server
-	porterV1.RegisterPorterServiceServer(s, &server{})
+	porterV1pb.RegisterPorterServiceServer(s, &server{})
 	// Serve gRPC server
 	log.Println("Serving gRPC on 0.0.0.0:7777")
 	go func() {
@@ -54,7 +54,7 @@ func main() {
 
 	gwmux := runtime.NewServeMux()
 	// Register Greeter
-	err = porterV1.RegisterPorterServiceHandler(context.Background(), gwmux, conn)
+	err = porterV1pb.RegisterPorterServiceHandler(context.Background(), gwmux, conn)
 	if err != nil {
 		log.Fatalln("Failed to register gateway:", err)
 	}
