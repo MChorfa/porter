@@ -93,7 +93,7 @@ func run(ctx context.Context, c *config, stdout io.Writer) error {
 			return nil
 		case <-time.Tick(c.tick):
 			fmt.Printf("tick %d", c.tick)
-			// _, err := porterGRPCService.startServer(c.url)
+			// _, err := porterdService.startServer(c.url)
 			// if err != nil {
 			// 	return err
 			// }

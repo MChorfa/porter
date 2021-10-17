@@ -1,19 +1,16 @@
 version: v1beta1
 build:
   roots:
-    - proto
+    - api/proto
 lint:
   use:
     - DEFAULT
-  ignore_only:
-    PACKAGE_DIRECTORY_MATCH:
-      - porter.proto
-    PACKAGE_VERSION_SUFFIX:
-      - porter.proto
-    RPC_REQUEST_RESPONSE_UNIQUE:
-      - porter.proto
-    RPC_RESPONSE_STANDARD_NAME:
-      - porter.proto
-deps:
-  - buf.build/googleapis/googleapis
-  - buf.build/grpc-ecosystem/grpc-gateway
+  ignore:
+    - google
+    - protoc-gen-openapiv2
+  except:
+    - RPC_RESPONSE_STANDARD_NAME
+    - RPC_REQUEST_RESPONSE_UNIQUE
+breaking:
+  use:
+    - FILE

@@ -12,7 +12,7 @@ RUNTIME_PLATFORM = linux
 RUNTIME_ARCH = amd64
 PORTER_UPDATE_TEST_FILES ?=
 PORTER_GRPC_PATH="$(PWD)/pkg/grpc"
-PORTER_PROTO_PATH="$(PORTER_GRPC_PATH)/proto/porter/v1"
+PORTER_PROTO_PATH="$(PORTER_GRPC_PATH)/api/proto"
 
 GO = go
 LOCAL_PORTER = PORTER_HOME=$(PWD)/bin $(PWD)/bin/porter
@@ -148,9 +148,19 @@ clean:
 	go run mage.go clean
 
 
-build-porter-proto:
+build-porter-proto: api/proto/google api/proto/protoc-gen-openapiv2
 	cd $(PORTER_GRPC_PATH) && buf mod update && buf build
 generate-porter-proto: build-porter-proto
-	cd $(PORTER_GRPC_PATH) && buf generate --path $(PORTER_PROTO_PATH)/porter.proto
+	cd $(PORTER_GRPC_PATH) && buf generate --path $(PORTER_PROTO_PATH)/porterd/v1/porterd.proto
 clean-porter-proto:
-	rm $(PORTER_PROTO_PATH)/*.go || true
+	rm -rd $(PORTER_GRPC_PATH)/internal/pkg || true
+api/proto/google:
+	@mkdir -p $(PORTER_PROTO_PATH)/google/api
+	curl -s https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/annotations.proto -o $(PORTER_PROTO_PATH)/google/api/annotations.proto
+	curl -s https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/http.proto -o $(PORTER_PROTO_PATH)/google/api/http.proto
+	curl -s https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/field_behavior.proto -o $(PORTER_PROTO_PATH)/google/api/field_behavior.proto
+api/proto/protoc-gen-openapiv2:
+	@mkdir -p $(PORTER_PROTO_PATH)/protoc-gen-openapiv2/options
+	curl -s https://raw.githubusercontent.com/grpc-ecosystem/grpc-gateway/master/protoc-gen-openapiv2/options/openapiv2.proto -o $(PORTER_PROTO_PATH)/protoc-gen-openapiv2/options/openapiv2.proto
+	curl -s https://raw.githubusercontent.com/grpc-ecosystem/grpc-gateway/master/protoc-gen-openapiv2/options/annotations.proto -o $(PORTER_PROTO_PATH)/protoc-gen-openapiv2/options/annotations.proto
+

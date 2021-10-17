@@ -1,7 +1,8 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "porter/v1/porter.proto",
+    "title": "porterd-api",
+    "description": "porterd",
     "version": "1.0"
   },
   "tags": [
@@ -31,13 +32,13 @@
               "type": "object",
               "properties": {
                 "result": {
-                  "$ref": "#/definitions/porterGRPCExecuteResponse"
+                  "$ref": "#/definitions/v1ExecuteResponse"
                 },
                 "error": {
                   "$ref": "#/definitions/rpcStatus"
                 }
               },
-              "title": "Stream result of porterGRPCExecuteResponse"
+              "title": "Stream result of v1ExecuteResponse"
             }
           },
           "default": {
@@ -53,7 +54,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/porterGRPCExecuteRequest"
+              "$ref": "#/definitions/v1ExecuteRequest"
             }
           }
         ],
@@ -74,13 +75,13 @@
               "type": "object",
               "properties": {
                 "result": {
-                  "$ref": "#/definitions/porterGRPCIntallResponse"
+                  "$ref": "#/definitions/v1IntallResponse"
                 },
                 "error": {
                   "$ref": "#/definitions/rpcStatus"
                 }
               },
-              "title": "Stream result of porterGRPCIntallResponse"
+              "title": "Stream result of v1IntallResponse"
             }
           },
           "default": {
@@ -96,7 +97,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/porterGRPCIntallRequest"
+              "$ref": "#/definitions/v1IntallRequest"
             }
           }
         ],
@@ -117,13 +118,13 @@
               "type": "object",
               "properties": {
                 "result": {
-                  "$ref": "#/definitions/porterGRPCUnIntallResponse"
+                  "$ref": "#/definitions/v1UnIntallResponse"
                 },
                 "error": {
                   "$ref": "#/definitions/rpcStatus"
                 }
               },
-              "title": "Stream result of porterGRPCUnIntallResponse"
+              "title": "Stream result of v1UnIntallResponse"
             }
           },
           "default": {
@@ -139,7 +140,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/porterGRPCUnIntallRequest"
+              "$ref": "#/definitions/v1UnIntallRequest"
             }
           }
         ],
@@ -160,13 +161,13 @@
               "type": "object",
               "properties": {
                 "result": {
-                  "$ref": "#/definitions/porterGRPCUpgradeResponse"
+                  "$ref": "#/definitions/v1UpgradeResponse"
                 },
                 "error": {
                   "$ref": "#/definitions/rpcStatus"
                 }
               },
-              "title": "Stream result of porterGRPCUpgradeResponse"
+              "title": "Stream result of v1UpgradeResponse"
             }
           },
           "default": {
@@ -182,7 +183,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/porterGRPCUpgradeRequest"
+              "$ref": "#/definitions/v1UpgradeRequest"
             }
           }
         ],
@@ -193,86 +194,17 @@
     }
   },
   "definitions": {
-    "porterGRPCExecuteRequest": {
-      "type": "object",
-      "properties": {
-        "executing": {
-          "type": "string",
-          "format": "byte"
-        }
-      },
-      "title": "Execute"
-    },
-    "porterGRPCExecuteResponse": {
-      "type": "object",
-      "properties": {
-        "output": {
-          "type": "string"
-        }
-      }
-    },
-    "porterGRPCIntallRequest": {
-      "type": "object",
-      "properties": {
-        "installing": {
-          "type": "string",
-          "format": "byte"
-        }
-      },
-      "title": "Install"
-    },
-    "porterGRPCIntallResponse": {
-      "type": "object",
-      "properties": {
-        "output": {
-          "type": "string"
-        }
-      }
-    },
-    "porterGRPCUnIntallRequest": {
-      "type": "object",
-      "properties": {
-        "uninstalling": {
-          "type": "string",
-          "format": "byte"
-        }
-      },
-      "title": "Uninstall"
-    },
-    "porterGRPCUnIntallResponse": {
-      "type": "object",
-      "properties": {
-        "output": {
-          "type": "string"
-        }
-      }
-    },
-    "porterGRPCUpgradeRequest": {
-      "type": "object",
-      "properties": {
-        "upgrading": {
-          "type": "string",
-          "format": "byte"
-        }
-      },
-      "title": "Upgrade"
-    },
-    "porterGRPCUpgradeResponse": {
-      "type": "object",
-      "properties": {
-        "output": {
-          "type": "string"
-        }
-      }
-    },
     "protobufAny": {
       "type": "object",
       "properties": {
-        "@type": {
+        "typeUrl": {
           "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
         }
-      },
-      "additionalProperties": {}
+      }
     },
     "rpcStatus": {
       "type": "object",
@@ -291,10 +223,78 @@
           }
         }
       }
+    },
+    "v1ExecuteRequest": {
+      "type": "object",
+      "properties": {
+        "executing": {
+          "type": "string",
+          "format": "byte"
+        }
+      },
+      "title": "Execute"
+    },
+    "v1ExecuteResponse": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      }
+    },
+    "v1IntallRequest": {
+      "type": "object",
+      "properties": {
+        "installing": {
+          "type": "string",
+          "format": "byte"
+        }
+      },
+      "title": "Install"
+    },
+    "v1IntallResponse": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      }
+    },
+    "v1UnIntallRequest": {
+      "type": "object",
+      "properties": {
+        "uninstalling": {
+          "type": "string",
+          "format": "byte"
+        }
+      },
+      "title": "Uninstall"
+    },
+    "v1UnIntallResponse": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      }
+    },
+    "v1UpgradeRequest": {
+      "type": "object",
+      "properties": {
+        "upgrading": {
+          "type": "string",
+          "format": "byte"
+        }
+      },
+      "title": "Upgrade"
+    },
+    "v1UpgradeResponse": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string"
+        }
+      }
     }
-  },
-  "externalDocs": {
-    "description": "porter docs",
-    "url": "https://porter.sh/docs/"
   }
 }
