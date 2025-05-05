@@ -1,19 +1,23 @@
-name: HELLO
+schemaVersion: 1.0.0-alpha.1
+name: porter-hello
 version: 0.1.0
 description: "An example Porter configuration"
-tag: getporter/porter-hello
+registry: "localhost:5000"
 
 dependencies:
-  - name: mysql
-    tag: "getporter/azure-mysql:5.7"
-  - name: ad
-    tag: "getporter/azure-active-directory"
-    prereleases: true
-  - name: storage
-    tag: "getporter/azure-blob-storage"
-    versions:
-      - 1.x - 2
-      - 2.1 - 3.x
+  requires:
+    - name: mysql
+      bundle:
+        reference: "getporter/azure-mysql:5.7"
+    - name: ad
+      bundle:
+        reference: "getporter/azure-active-directory"
+        version: 1.0.0-0
+    - name: storage
+      bundle:
+        reference: "getporter/azure-blob-storage"
+        version: 1.x - 2,2.1 - 3.x
+
 mixins:
   - exec
 

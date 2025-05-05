@@ -6,13 +6,13 @@ convert cute pictures of gophers into ASCII art when you install the bundle.
 Here are some hints so that you can try to solve it in your own way. 
 For the full solution, see the [asciiart][asciiart] directory in the workshop materials.
 
-* A good base image for go is `golang:1.11-stretch`.
+* A good base image for go is `golang:latest`.
 * You need to run `porter build` after modifying the Dockerfile.tmpl to rebuild
 your invocation image to pick up your changes.
 * Don't forget to copy your images into your invocation image to /cnab/app/.
 * The command to run is `goasciiart -p=gopher.png -w=100`.
 
-[asciiart]: https://github.com/deislabs/porter/tree/main/workshop/asciiart
+[asciiart]: https://porter.sh/src/workshop/asciiart
 
 ## Gophers!
 [Gopher artwork][gophers] is copyright Ashley McNamara and is licensed under the 

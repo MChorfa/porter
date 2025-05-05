@@ -1,15 +1,13 @@
 package cnabprovider
 
 import (
-	"os"
+	"fmt"
 
-	"get.porter.sh/porter/pkg/cnab/extensions"
+	"get.porter.sh/porter/pkg/cnab"
+	"get.porter.sh/porter/pkg/cnab/drivers"
 	"github.com/cnabio/cnab-go/driver"
 	"github.com/cnabio/cnab-go/driver/docker"
-	"github.com/cnabio/cnab-go/driver/lookup"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -20,7 +18,7 @@ const (
 	DriverNameDebug = "debug"
 )
 
-func (r *Runtime) newDriver(driverName string, claimName string, args ActionArguments) (driver.Driver, error) {
+func (r *Runtime) newDriver(driverName string, args ActionArguments) (driver.Driver, error) {
 	var driverImpl driver.Driver
 	var err error
 
@@ -30,66 +28,97 @@ func (r *Runtime) newDriver(driverName string, claimName string, args ActionArgu
 		return nil, err
 	}
 
-	if args.AllowDockerHostAccess {
-		if driverName != DriverNameDocker {
-			return nil, errors.Errorf("allow-docker-host-access was enabled, but the driver is %s", driverName)
-		}
+	if args.AllowDockerHostAccess && driverName != DriverNameDocker {
+		return nil, fmt.Errorf("allow-docker-host-access was enabled, but the driver is %s", driverName)
+	}
 
-		driverImpl, err = r.dockerDriverWithHostAccess(dockerExt)
-	} else {
-		if dockerRequired {
-			return nil, errors.Errorf("extension %q is required but allow-docker-host-access was not enabled",
-				extensions.DockerExtensionKey)
-		}
-		driverImpl, err = lookup.Lookup(driverName)
+	if dockerRequired && !args.AllowDockerHostAccess {
+		return nil, fmt.Errorf("extension %q is required but allow-docker-host-access was not enabled", cnab.DockerExtensionKey)
+	}
+
+	if len(args.HostVolumeMounts) > 0 && driverName != DriverNameDocker {
+		return nil, fmt.Errorf("mount-host-volume was was used to mount a volume, but the driver is %s", driverName)
+	}
+
+	if !args.AllowDockerHostAccess && len(args.HostVolumeMounts) == 0 {
+		driverImpl, err = drivers.LookupDriver(r.Context, driverName)
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	var d *docker.Driver
+	if args.AllowDockerHostAccess || len(args.HostVolumeMounts) > 0 {
+		d = &docker.Driver{}
+	}
+
+	if args.AllowDockerHostAccess {
+		driverImpl, err = r.dockerDriverWithHostAccess(dockerExt, d)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if len(args.HostVolumeMounts) > 0 {
+		driverImpl, err = func(dr *docker.Driver) (driver.Driver, error) {
+
+			dr.AddConfigurationOptions(func(cfg *container.Config, hostCfg *container.HostConfig) error {
+				err := r.addVolumeMountsToHostConfig(hostCfg, args.HostVolumeMounts)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+
+			return driver.Driver(dr), nil
+		}(d)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if configurable, ok := driverImpl.(driver.Configurable); ok {
 		driverCfg := make(map[string]string)
 		// Load any driver-specific config out of the environment
 		for env := range configurable.Config() {
-			if val, ok := os.LookupEnv(env); ok {
+			if val, ok := r.LookupEnv(env); ok {
 				driverCfg[env] = val
 			}
 		}
 
-		configurable.SetConfig(driverCfg)
+		err = configurable.SetConfig(driverCfg)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return driverImpl, nil
 }
 
-func (r *Runtime) dockerDriverWithHostAccess(config extensions.Docker) (driver.Driver, error) {
-	const dockerSock = "/var/run/docker.sock"
+func (r *Runtime) dockerDriverWithHostAccess(config cnab.Docker, d *docker.Driver) (driver.Driver, error) {
 
-	if exists, _ := r.FileSystem.Exists(dockerSock); !exists {
-		return nil, errors.Errorf("allow-docker-host-access was specified but could not detect a local docker daemon running by checking for %s", dockerSock)
+	// Run the container with privileged access if necessary
+	if config.Privileged {
+		d.AddConfigurationOptions(func(cfg *container.Config, hostCfg *container.HostConfig) error {
+			// Equivalent of using: --privileged
+			// Required for DinD, or "Docker-in-Docker"
+			hostCfg.Privileged = true
+			return nil
+		})
 	}
 
-	d := &docker.Driver{}
-	d.AddConfigurationOptions(func(cfg *container.Config, hostCfg *container.HostConfig) error {
+	// Mount the docker socket
+	d.AddConfigurationOptions(r.mountDockerSocket)
 
-		// Equivalent of using: --privileged
-		// Required for DinD, or "Docker-in-Docker"
-		hostCfg.Privileged = config.Privileged
-
-		// Equivalent of using: -v /var/run/docker.sock:/var/run/docker.sock
-		// Required for DooD, or "Docker-out-of-Docker"
-		dockerSockMount := mount.Mount{
-			Source:   "/var/run/docker.sock",
-			Target:   "/var/run/docker.sock",
-			Type:     "bind",
-			ReadOnly: false,
-		}
-		if hostCfg.Mounts == nil {
-			hostCfg.Mounts = []mount.Mount{}
-		}
-		hostCfg.Mounts = append(hostCfg.Mounts, dockerSockMount)
-
-		return nil
-	})
 	return driver.Driver(d), nil
+}
+
+func (r *Runtime) addVolumeMountsToHostConfig(hostConfig *container.HostConfig, mounts []HostVolumeMountSpec) error {
+	for _, mount := range mounts {
+		err := r.addVolumeMountToHostConfig(hostConfig, mount.Source, mount.Target, mount.ReadOnly)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

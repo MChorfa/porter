@@ -11,7 +11,7 @@ class: center, middle
 # CNAB Unpacked
 
 <h3 style="margin-top: 3em">
-  <a href="https://porter.sh/cnab-unpacked/">porter.sh/cnab-unpacked</a>
+  <a href="/cnab-unpacked/">porter.sh/cnab-unpacked</a>
 </h3>
 
 ---
@@ -114,7 +114,7 @@ class: middle
 # Get ready...
 
 ```
-$ porter explain --tag deislabs/tron:v1.0
+$ porter explain deislabs/tron:v1.0
 
 name: Tron
 description: The classic game of light cycles and disc wars
@@ -134,20 +134,31 @@ Parameters
 
 ```
 
-🚧 https://github.com/deislabs/porter/issues/635
+🚧 https://github.com/getporter/porter/issues/635
 
 ---
 # Get Set...
 
 ```
-$ porter credentials generate -t deislabs/tron:v1.0
-
-Generating new credential azure from bundle tron
-==> 1 credentials required for bundle tron
-? How would you like to set credential "kubeconfig" file path
-? Enter the path that will be used to set credential "kubeconfig"
-
-Saving credential to /Users/carolynvs/.porter/credentials/azure.yaml
+$ porter credentials create azure-tron.json
+creating porter credential set in the current directory
+$ cat azure-tron.json
+# modify azure-tron.json with your editor to the content below
+{
+    "schemaType": "CredentialSet",
+    "schemaVersion": "1.0.1",
+    "name": "azure",
+    "credentials": [
+        {
+            "name": "kubeconfig",
+            "source": {
+                "path": "/path/to/credential-path-file.txt"
+            }
+        },
+    ]
+}
+$ porter credentials apply azure-tron.json
+Applied /azure credential set
 ```
 
 # Go!
@@ -389,7 +400,7 @@ The friendly cloud installer that bootstraps your bundles using tools and assets
 * Community focused
 
 .center[
-  <img src="/images/porter-notext.png" alt="woman in black suit and hat, with cnab logo" width="300px" style="bottom: 0; position: absolute;"/>
+  <img src="/images/porter-docs-header.svg" alt="cat in bellhop hat and bowtie, Porter" width="300px" style="bottom: 0; position: absolute;"/>
 ]
 
 ---
@@ -428,7 +439,7 @@ The friendly cloud installer that bootstraps your bundles using tools and assets
 * [cnab.io][cnab]
 * [cnab.io/community-meetings/#communications][cnab-slack] - #cnab CNCF Slack
 * [porter.sh][porter]
-* [porter.sh/contribute][contribute] - New Contributor Guide
+* [porter.sh/docs/contribute][contribute] - New Contributor Guide
 * [porter.sh/community][porter-slack] - #porter CNCF Slack and Office Hours
 
 ???
@@ -436,6 +447,6 @@ The friendly cloud installer that bootstraps your bundles using tools and assets
 
 [cnab]: https://cnab.io
 [cnab-slack]: https://cnab.io/community-meetings/#communications
-[porter]: https://porter.sh
-[contribute]: https://porter.sh/contribute
-[porter-slack]: https://porter.sh/community
+[porter]: /
+[contribute]: /docs/contribute/
+[porter-slack]: /community/

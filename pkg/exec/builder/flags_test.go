@@ -1,19 +1,19 @@
 package builder
 
 import (
-	"io/ioutil"
+	"os"
 	"sort"
 	"testing"
 
+	yaml "get.porter.sh/porter/pkg/yaml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	yaml "gopkg.in/yaml.v2"
 )
 
 var testStep = TestStep{}
 
 func TestFlags_UnmarshalYAML(t *testing.T) {
-	b, err := ioutil.ReadFile("testdata/flags-input.yaml")
+	b, err := os.ReadFile("testdata/flags-input.yaml")
 	require.NoError(t, err, "could not read the input file")
 
 	var flags Flags

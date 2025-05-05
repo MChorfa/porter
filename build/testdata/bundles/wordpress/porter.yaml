@@ -1,21 +1,28 @@
-mixins:
-- exec
-- helm
-
+schemaVersion: 1.0.1
 name: wordpress
-tag: localhost:5000/wordpress
-version: 0.1.3
+version: 0.1.4
+registry: "localhost:5000"
+
+mixins:
+  - exec
+  - helm3:
+      repositories:
+        bitnami:
+          url: "https://charts.bitnami.com/bitnami"
 
 dependencies:
-  - name: mysql
-    tag: localhost:5000/mysql:v0.1.3
-    parameters:
-      database-name: wordpress
-      mysql-user: wordpress
+  requires:
+    - name: mysql
+      bundle:
+        reference: localhost:5000/mysql:v0.1.4
+      parameters:
+        database-name: wordpress
+        mysql-user: wordpress
+        namespace: wordpress
 
 credentials:
 - name: kubeconfig
-  path: /root/.kube/config
+  path: /home/nonroot/.kube/config
 
 parameters:
 - name: wordpress-name
@@ -30,35 +37,19 @@ parameters:
     - upgrade
 - name: namespace
   type: string
-  default: ''
+  default: 'wordpress'
 
 install:
-  - helm:
-      description: "Install Wordpress"
-      name: "{{ bundle.parameters.wordpress-name }}"
-      chart: stable/wordpress
-      namespace: "{{ bundle.parameters.namespace }}"
-      replace: true
-      set:
-        wordpressPassword: "{{ bundle.parameters.wordpress-password }}"
-        externalDatabase.password: "{{ bundle.dependencies.mysql.outputs.mysql-password }}"
-        externalDatabase.port: 3306
-        mariadb.enabled: false
-      outputs:
-        - name: wordpress-password
-          secret: "{{ bundle.parameters.wordpress-name }}"
-          key: wordpress-password
+  - exec:
+      command: ./helpers.sh
+      arguments:
+        - install
 
 upgrade:
-  - helm:
-      description: "Upgrade Wordpress"
-      name: "{{ bundle.parameters.wordpress-name }}"
-      namespace: "{{ bundle.parameters.namespace }}"
-      chart: stable/wordpress
-      outputs:
-        - name: wordpress-password
-          secret: "{{ bundle.parameters.wordpress-name }}"
-          key: wordpress-password
+  - exec:
+      command: ./helpers.sh
+      arguments:
+        - install
 
 ping:
   - exec:
@@ -68,11 +59,10 @@ ping:
         - ping
 
 uninstall:
-  - helm:
-      description: "Uninstall Wordpress"
-      purge: true
-      releases: 
-        - "{{ bundle.parameters.wordpress-name }}"
+  - exec:
+      command: echo
+      arguments:
+        - uninstalled
 
 outputs:
   - name: wordpress-password
@@ -83,3 +73,4 @@ outputs:
       - "install"
       - "upgrade"
     sensitive: true
+    path: /cnab/app/outputs/wordpress-password

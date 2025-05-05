@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"get.porter.sh/porter/pkg/mixin"
 	"get.porter.sh/porter/pkg/pkgmgmt"
 	"get.porter.sh/porter/pkg/pkgmgmt/feed"
@@ -25,6 +23,7 @@ func buildMixinCommands(p *porter.Porter) *cobra.Command {
 	cmd.AddCommand(BuildMixinInstallCommand(p))
 	cmd.AddCommand(BuildMixinUninstallCommand(p))
 	cmd.AddCommand(buildMixinsFeedCommand(p))
+	cmd.AddCommand(buildMixinsCreateCommand(p))
 
 	return cmd
 }
@@ -39,12 +38,12 @@ func buildMixinsListCommand(p *porter.Porter) *cobra.Command {
 			return opts.ParseFormat()
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return p.PrintMixins(opts)
+			return p.PrintMixins(cmd.Context(), opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.RawFormat, "output", "o", "table",
-		"Output format, allowed values are: table, json, yaml")
+	cmd.Flags().StringVarP(&opts.RawFormat, "output", "o", "plaintext",
+		"Output format, allowed values are: plaintext, json, yaml")
 
 	return cmd
 }
@@ -57,7 +56,9 @@ func buildMixinsSearchCommand(p *porter.Porter) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "search [QUERY]",
 		Short: "Search available mixins",
-		Long:  "Search available mixins. You can specify an optional mixin name query, where the results are filtered by mixins whose name contains the query term.",
+		Long: `Search available mixins. You can specify an optional mixin name query, where the results are filtered by mixins whose name contains the query term.
+
+By default the community mixin index at https://cdn.porter.sh/mixins/index.json is searched. To search from a mirror, set the environment variable PORTER_MIRROR, or mirror in the Porter config file, with the value to replace https://cdn.porter.sh with.`,
 		Example: `  porter mixin search
   porter mixin search helm
   porter mixin search -o json`,
@@ -69,8 +70,11 @@ func buildMixinsSearchCommand(p *porter.Porter) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.RawFormat, "output", "o", "table",
-		"Output format, allowed values are: table, json, yaml")
+	flags := cmd.Flags()
+	flags.StringVarP(&opts.RawFormat, "output", "o", "plaintext",
+		"Output format, allowed values are: plaintext, json, yaml")
+	flags.StringVar(&opts.Mirror, "mirror", pkgmgmt.DefaultPackageMirror,
+		"Mirror of official Porter assets")
 
 	return cmd
 }
@@ -80,24 +84,29 @@ func BuildMixinInstallCommand(p *porter.Porter) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "install NAME",
 		Short: "Install a mixin",
-		Example: `  porter mixin install helm --url https://cdn.porter.sh/mixins/helm
-  porter mixin install helm --feed-url https://cdn.porter.sh/mixins/atom.xml
+		Long: `Install a mixin.
+
+By default mixins are downloaded from the official Porter mixin feed at https://cdn.porter.sh/mixins/atom.xml. To download from a mirror, set the environment variable PORTER_MIRROR, or mirror in the Porter config file, with the value to replace https://cdn.porter.sh with.`,
+		Example: `  porter mixin install helm3 --feed-url https://mchorfa.github.io/porter-helm3/atom.xml
   porter mixin install azure --version v0.4.0-ralpha.1+dubonnet --url https://cdn.porter.sh/mixins/azure
   porter mixin install kubernetes --version canary --url https://cdn.porter.sh/mixins/kubernetes`,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			return opts.Validate(args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return p.InstallMixin(opts)
+			return p.InstallMixin(cmd.Context(), opts)
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.Version, "version", "v", "latest",
+	flags := cmd.Flags()
+	flags.StringVarP(&opts.Version, "version", "v", "latest",
 		"The mixin version. This can either be a version number, or a tagged release like 'latest' or 'canary'")
-	cmd.Flags().StringVar(&opts.URL, "url", "",
+	flags.StringVar(&opts.URL, "url", "",
 		"URL from where the mixin can be downloaded, for example https://github.com/org/proj/releases/downloads")
-	cmd.Flags().StringVar(&opts.FeedURL, "feed-url", "",
-		fmt.Sprintf(`URL of an atom feed where the mixin can be downloaded (default %s)`, mixin.DefaultFeedUrl))
+	flags.StringVar(&opts.FeedURL, "feed-url", "",
+		"URL of an atom feed where the mixin can be downloaded. Defaults to the official Porter mixin feed.")
+	flags.StringVar(&opts.Mirror, "mirror", pkgmgmt.DefaultPackageMirror,
+		"Mirror of official Porter assets")
 	return cmd
 }
 
@@ -111,7 +120,7 @@ func BuildMixinUninstallCommand(p *porter.Porter) *cobra.Command {
 			return opts.Validate(args)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return p.UninstallMixin(opts)
+			return p.UninstallMixin(cmd.Context(), opts)
 		},
 	}
 
@@ -155,7 +164,7 @@ bin/
     ├── mymixin-linux-amd64
     └── mymixin-windows-amd64.exe
 
-See https://porter.sh/mixin-dev-guide/distribution more details.
+See https://porter.sh/docs/development/dist-a-mixin/ more details.
 `,
 		Example: `  porter mixin feed generate
   porter mixin feed generate --dir bin --file bin/atom.xml --template porter-atom-template.xml`,
@@ -163,7 +172,7 @@ See https://porter.sh/mixin-dev-guide/distribution more details.
 			return opts.Validate(p.Context)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return p.GenerateMixinFeed(opts)
+			return p.GenerateMixinFeed(cmd.Context(), opts)
 		},
 	}
 
@@ -186,5 +195,37 @@ func BuildMixinFeedTemplateCommand(p *porter.Porter) *cobra.Command {
 			return p.CreateMixinFeedTemplate()
 		},
 	}
+	return cmd
+}
+
+func buildMixinsCreateCommand(p *porter.Porter) *cobra.Command {
+	opts := porter.MixinsCreateOptions{}
+
+	cmd := &cobra.Command{
+		Use:   "create NAME --author \"My Name\" --username mygithubusername [--dir /path/to/mixin/dir]",
+		Short: "Create a new mixin project based on the getporter/skeletor repository",
+		Long: `Create a new mixin project based on the getporter/skeletor repository.
+The first argument is the name of the mixin to create and is required.
+
+A flag of --author to declare the author of the mixin is a required input.
+A flag of --username to specify the GitHub's username of the mixin's author is a required input.
+
+You can also specify where to put the mixin directory. It will default to the current directory.`,
+		Example: ` porter mixin create MyMixin --author "My Name" --username mygithubusername
+		porter mixin create MyMixin --author "My Name" --username mygithubusername --dir path/to/mymixin
+		`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			return opts.Validate(args, p.Context)
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return p.CreateMixin(opts)
+		},
+	}
+
+	f := cmd.Flags()
+	f.StringVar(&opts.AuthorName, "author", "", "Your full name.")
+	f.StringVar(&opts.AuthorUsername, "username", "", "Your GitHub username.")
+	f.StringVar(&opts.DirPath, "dir", "", "Path to the designated location of the mixin's directory.")
+
 	return cmd
 }

@@ -16,7 +16,7 @@ type Action struct {
 // install:
 //   exec:
 //     ...
-//   helm:
+//   helm3:
 //     ...
 func (a Action) MarshalYAML() (interface{}, error) {
 	return map[string]interface{}{a.Name: a.Steps}, nil
@@ -88,22 +88,30 @@ func (a *Actions) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-var _ builder.HasOrderedArguments = Step{}
-var _ builder.ExecutableStep = Step{}
-var _ builder.StepWithOutputs = Step{}
+var (
+	_ builder.HasOrderedArguments = Step{}
+	_ builder.ExecutableStep      = Step{}
+	_ builder.StepWithOutputs     = Step{}
+	_ builder.HasEnvironmentVars  = Step{}
+)
 
 type Step struct {
 	Instruction `yaml:"exec"`
 }
 
 type Instruction struct {
-	Description     string        `yaml:"description"`
-	Command         string        `yaml:"command"`
-	Arguments       []string      `yaml:"arguments,omitempty"`
-	SuffixArguments []string      `yaml:"suffix-arguments,omitempty"`
-	Flags           builder.Flags `yaml:"flags,omitempty"`
-	Outputs         []Output      `yaml:"outputs,omitempty"`
-	SuppressOutput  bool          `yaml:"suppress-output,omitempty"`
+	Description     string            `yaml:"description"`
+	Command         string            `yaml:"command"`
+	WorkingDir      string            `yaml:"dir,omitempty"`
+	Arguments       []string          `yaml:"arguments,omitempty"`
+	SuffixArguments []string          `yaml:"suffix-arguments,omitempty"`
+	Flags           builder.Flags     `yaml:"flags,omitempty"`
+	EnvironmentVars map[string]string `yaml:"envs,omitempty"`
+	Outputs         []Output          `yaml:"outputs,omitempty"`
+	SuppressOutput  bool              `yaml:"suppress-output,omitempty"`
+
+	// Allow the user to ignore some errors
+	builder.IgnoreErrorHandler `yaml:"ignoreError,omitempty"`
 }
 
 func (s Step) GetCommand() string {
@@ -122,6 +130,10 @@ func (s Step) GetFlags() builder.Flags {
 	return s.Flags
 }
 
+func (s Step) GetEnvironmentVars() map[string]string {
+	return s.EnvironmentVars
+}
+
 func (s Step) SuppressesOutput() bool {
 	return s.SuppressOutput
 }
@@ -132,6 +144,10 @@ func (s Step) GetOutputs() []builder.Output {
 		outputs[i] = s.Outputs[i]
 	}
 	return outputs
+}
+
+func (s Step) GetWorkingDir() string {
+	return s.WorkingDir
 }
 
 var _ builder.OutputRegex = Output{}

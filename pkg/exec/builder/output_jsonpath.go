@@ -1,12 +1,14 @@
 package builder
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 
-	"get.porter.sh/porter/pkg/context"
+	"get.porter.sh/porter/pkg/runtime"
+	"get.porter.sh/porter/pkg/tracing"
 	"github.com/PaesslerAG/jsonpath"
-	"github.com/pkg/errors"
 )
 
 type OutputJsonPath interface {
@@ -16,7 +18,10 @@ type OutputJsonPath interface {
 
 // ProcessJsonPathOutputs evaluates the specified output buffer as JSON, looks through the outputs for
 // any that implement the OutputJsonPath and extracts their output.
-func ProcessJsonPathOutputs(cxt *context.Context, step StepWithOutputs, stdout string) error {
+func ProcessJsonPathOutputs(ctx context.Context, cfg runtime.RuntimeConfig, step StepWithOutputs, stdout string) error {
+	_, span := tracing.StartSpan(ctx)
+	defer span.EndSpan()
+
 	outputs := step.GetOutputs()
 
 	if len(outputs) == 0 {
@@ -37,17 +42,19 @@ func ProcessJsonPathOutputs(cxt *context.Context, step StepWithOutputs, stdout s
 			continue
 		}
 
-		if cxt.Debug {
-			fmt.Fprintf(cxt.Err, "Processing jsonpath output %s...", outputName)
+		if cfg.DebugMode {
+			fmt.Fprintf(cfg.Err, "Processing jsonpath output %s using query %s against document\n%s\n", outputName, outputPath, stdout)
 		}
 
 		var valueB []byte
 
 		if outputJson == nil {
 			if stdout != "" {
-				err := json.Unmarshal([]byte(stdout), &outputJson)
+				d := json.NewDecoder(bytes.NewBuffer([]byte(stdout)))
+				d.UseNumber()
+				err := d.Decode(&outputJson)
 				if err != nil {
-					return errors.Wrapf(err, "error unmarshaling stdout as json %s", stdout)
+					return span.Error(fmt.Errorf("error unmarshaling stdout as json %s: %w", stdout, err))
 				}
 			}
 		}
@@ -56,7 +63,7 @@ func ProcessJsonPathOutputs(cxt *context.Context, step StepWithOutputs, stdout s
 		if outputJson != nil {
 			value, err := jsonpath.Get(outputPath, outputJson)
 			if err != nil {
-				return errors.Wrapf(err, "error evaluating jsonpath %q for output %q against %s", outputPath, outputName, stdout)
+				return span.Error(fmt.Errorf("error evaluating jsonpath %q for output %q against %s: %w", outputPath, outputName, stdout, err))
 			}
 
 			// Only marshal complex types to json, leave strings, numbers and booleans alone
@@ -64,16 +71,16 @@ func ProcessJsonPathOutputs(cxt *context.Context, step StepWithOutputs, stdout s
 			case map[string]interface{}, []interface{}:
 				valueB, err = json.Marshal(value)
 				if err != nil {
-					return errors.Wrapf(err, "error marshaling jsonpath result %v for output %q", valueB, outputName)
+					return span.Error(fmt.Errorf("error marshaling jsonpath result %v for output %q: %w", valueB, outputName, err))
 				}
 			default:
 				valueB = []byte(fmt.Sprintf("%v", t))
 			}
 		}
 
-		err := cxt.WriteMixinOutputToFile(outputName, valueB)
+		err := cfg.WriteMixinOutputToFile(outputName, valueB)
 		if err != nil {
-			return errors.Wrapf(err, "error writing mixin output for %q", outputName)
+			return span.Error(fmt.Errorf("error writing mixin output for %q: %w", outputName, err))
 		}
 	}
 

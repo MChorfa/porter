@@ -1,12 +1,13 @@
+schemaVersion: 1.0.0-alpha.1
+name: mybun
 version: 0.1.0
-tag: example.com/mybun
+registry: example.com
 
 mixins:
   - exec
   - az:
       extensions:
         - iot
-
 
 install:
   - exec:

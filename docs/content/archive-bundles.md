@@ -3,20 +3,22 @@ title: Archiving Bundles
 description: Archiving Bundles with Porter
 ---
 
-Porter allows you to share bundles by [publishing](/distribute-bundles) them to an OCI registry. Porter also allows you to copy a bundle from one registry to another. Using these commands, bundle users have flexibility in how they leverage published bundles. What if you want to use a published bundle on a disconnected or edge network that has limited connectivity? The `porter archive` command and the `porter publish` commands allow you to take the bundle from a registry on one network, move it to the network or location, and republish it into another registry for use within that environment. The generated bundle archive contains the CNAB `bundle.json`, along with an OCI [image layout](https://github.com/opencontainers/image-spec/blob/master/image-layout.md) containing the invocation image and any images declared in the `images` section of the `bundle.json`. This enables the entire bundle to be easily moved into a private data center or across an air-gapped network, and republished within that environment.
+Porter allows you to share bundles by [publishing](/distributing-bundles/) them to an OCI registry. Porter also allows you to copy a bundle from one registry to another. Using these commands, bundle users have flexibility in how they leverage published bundles. What if you want to use a published bundle on a disconnected or edge network that has limited connectivity? The `porter archive` command and the `porter publish` commands allow you to take the bundle from a registry on one network, move it to the network or location, and republish it into another registry for use within that environment. The generated bundle archive contains the CNAB `bundle.json`, along with an OCI [image layout](https://github.com/opencontainers/image-spec/blob/master/image-layout.md) containing the bundle image and any images declared in the `images` section of the `bundle.json`. This enables the entire bundle to be easily moved into a private data center or across an air-gapped network, and republished within that environment.
+
+For a working example of how to move a bundle across an airgap, read [Example: Airgapped Environments](/examples/airgap/).
 
 ## Generating a Bundle Archive With Porter
 
 In order to generate the archive, all of the images in the bundle **must** have been published to a registry. For this reason, you must first `publish` your bundle to a registry:
 
 ```
-porter publish --tag jeremyrickard/porter-do-bundle:v0.5.0
+porter publish --reference jeremyrickard/porter-do-bundle:v0.5.0
 ```
 
 Now you can run the `porter archive` command and designate the archive file name and bundle tag to use:
 
 ```
-porter archive --tag jeremyrickard/porter-do-bundle:v0.5.0 do-porter.tgz
+porter archive --reference jeremyrickard/porter-do-bundle:v0.5.0 do-porter.tgz
 ```
 
 This will generate a file in the directory named `do-porter.tgz`.
@@ -54,14 +56,14 @@ drwxr-xr-x  0 jeremyrickard staff       0 Oct 18 10:27 ./artifacts/layout/blobs/
 -rw-r--r--  0 jeremyrickard staff     2955 Oct 18 10:27 ./bundle.json
 ```
 
-In this archive file, you will see the `bundle.json`, along with all of the artifacts that represent the OCI image layout. In this case, we had two images, the invocation image and an application image. They are both written to the `artifacts/` directory as part of the OCI image layout.
+In this archive file, you will see the `bundle.json`, along with all of the artifacts that represent the OCI image layout. In this case, we had two images, the bundle image and an application image. They are both written to the `artifacts/` directory as part of the OCI image layout.
 
 ## Publish a Bundle Archive
 
 Once you have a bundle archive, the next step to make it usable is to publish it to an OCI registry. To do this, the `porter publish` command is used. Given our `do-porter.tgz` bundle above, we can publish this to a new registry with the following command:
 
 ```
-$ porter publish -a do-porter.tgz --tag jrrporter.azurecr.io/do-porter-from-archive:1.0.0
+$ porter publish -a do-porter.tgz --reference jrrporter.azurecr.io/do-porter-from-archive:1.0.0
 Starting to copy image jrrporter.azurecr.io/do-porter-from-archive/porter-do@sha256:74b8622a8b7f09a6802a3fff166c8d1827c9e78ac4e4b9e71e0de872fa5077be...
 Completed image jrrporter.azurecr.io/do-porter-from-archive/porter-do@sha256:74b8622a8b7f09a6802a3fff166c8d1827c9e78ac4e4b9e71e0de872fa5077be copy
 Starting to copy image jrrporter.azurecr.io/do-porter-from-archive/spring-music@sha256:8f1133d81f1b078c865cdb11d17d1ff15f55c449d3eecca50190eed0f5e5e26f...
@@ -72,7 +74,7 @@ Bundle tag jrrporter.azurecr.io/do-porter-from-archive:1.0.0 pushed successfully
 This command will expand the bundle archive and copy each image up to the new registry. Once complete, you can use the bundle like any other published bundle:
 
 ```
-porter explain --tag jrrporter.azurecr.io/do-porter-from-archive:1.0.0
+porter explain jrrporter.azurecr.io/do-porter-from-archive:1.0.0
 Name: spring-music
 Description: Run the Spring Music Service on Kubernetes and Digital Ocean PostgreSQL
 Version: 0.5.0
@@ -96,6 +98,8 @@ space_name      Name for DO Space                                               
 Outputs:
 Name         Description                                Type     Applies To
 service_ip   IP Address assigned to the Load Balancer   string   All Actions
-
-No custom actions defined
 ```
+
+## Next Steps
+
+* [Example: Airgapped Environments](/examples/airgap/)

@@ -2,7 +2,7 @@ package runtime
 
 import (
 	"get.porter.sh/porter/pkg/manifest"
-	"gopkg.in/yaml.v2"
+	"get.porter.sh/porter/pkg/yaml"
 )
 
 type ActionInput struct {
@@ -12,7 +12,7 @@ type ActionInput struct {
 
 // MarshalYAML marshals the step nested under the action
 // install:
-// - helm:
+// - helm3:
 //   ...
 // Solution from https://stackoverflow.com/a/42547226
 func (a *ActionInput) MarshalYAML() (interface{}, error) {

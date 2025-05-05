@@ -4,12 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"get.porter.sh/porter/pkg/printer"
-
-	"get.porter.sh/porter/pkg/porter/version"
-	"github.com/stretchr/testify/require"
-
 	"get.porter.sh/porter/pkg"
+	"get.porter.sh/porter/pkg/porter/version"
+	"get.porter.sh/porter/pkg/printer"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPrintVersion(t *testing.T) {
@@ -21,9 +19,10 @@ func TestPrintVersion(t *testing.T) {
 	opts := version.Options{}
 	err := opts.Validate()
 	require.NoError(t, err)
-	m.PrintVersion(opts)
+	err = m.PrintVersion(opts)
+	require.NoError(t, err)
 
-	gotOutput := m.TestContext.GetOutput()
+	gotOutput := m.TestConfig.TestContext.GetOutput()
 	wantOutput := "exec v1.2.3 (abc123) by Porter Authors"
 	if !strings.Contains(gotOutput, wantOutput) {
 		t.Fatalf("invalid output:\nWANT:\t%q\nGOT:\t%q\n", wantOutput, gotOutput)
@@ -40,9 +39,10 @@ func TestPrintJsonVersion(t *testing.T) {
 	opts.RawFormat = string(printer.FormatJson)
 	err := opts.Validate()
 	require.NoError(t, err)
-	m.PrintVersion(opts)
+	err = m.PrintVersion(opts)
+	require.NoError(t, err)
 
-	gotOutput := m.TestContext.GetOutput()
+	gotOutput := m.TestConfig.TestContext.GetOutput()
 	wantOutput := `{
   "name": "exec",
   "version": "v1.2.3",

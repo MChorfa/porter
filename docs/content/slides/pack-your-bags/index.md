@@ -23,14 +23,12 @@ to get all the materials ready.
 
 * Clone the workshop repository
   ```console
-  git clone https://github.com/deislabs/porter.git
+  git clone https://github.com/getporter/porter.git
   cd porter/workshop
   ```
-* [Install Porter](https://porter.sh/install)
+* [Install Porter](/install/)
 * Create a [Docker Hub](https://hub.docker.com/signup) account if you don't have one
 * Create a Kubernetes Cluster on [macOS](https://docs.docker.com/docker-for-mac/kubernetes/) or [Windows](https://docs.docker.com/docker-for-windows/kubernetes/)
-* [Install Helm 2](https://helm.sh/docs/install/)
-* Initialize Helm on your cluster by running `helm init`
 
 
 ---
@@ -192,7 +190,7 @@ class: center, middle
   ![you fight for the users](/images/pack-your-bags/Spongebob-patrick-crying.jpg)
 ]
 
-.footnote[http://vignette3.wikia.nocookie.net/spongebob/images/f/f0/Spongebob-patrick-crying.jpg/revision/latest?cb=20140713205315]
+.footnote[https://vignette3.wikia.nocookie.net/spongebob/images/f/f0/Spongebob-patrick-crying.jpg/revision/latest?cb=20140713205315]
 
 ---
 class: center, middle
@@ -292,13 +290,13 @@ class: center, middle
   ![workflow](/images/pack-your-bags/the-workflow.png) ![magic](/images/pack-your-bags/magic.gif)
 ]
 
-.footnote[_http://www.reactiongifs.com/magic-3_]
+.footnote[_https://www.reactiongifs.com/magic-3_]
 
 ---
 ## Try it out: Install a bundle
 
 ```console
-$ porter install --tag deislabs/porter-hello-velocity:latest
+$ porter install --reference deislabs/porter-hello-velocity:latest
 ```
 
 ---
@@ -442,7 +440,7 @@ class: center, middle
 # An Example: Azure MySQL + Wordpress
 
 .center[
-  https://github.com/deislabs/porter/tree/main/examples/azure-mysql-wordpress
+  https://porter.sh/examples/src/azure-wordpress
 ]
 
 ---
@@ -572,7 +570,7 @@ Generating parameter definition porter-debug ====>
 ### Dockerfile
 ```Dockerfile
 FROM quay.io/deis/lightweight-docker-go:v0.2.0
-FROM debian:stretch
+FROM debian:stable-slim
 COPY --from=0 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 COPY . /cnab/app
@@ -649,7 +647,7 @@ The first argument is the name of the claim to create for the installation.
 The claim name defaults to the name of the bundle.
 
 Flags:
-  -c, --cred strings         Credential to use when installing the bundle. 
+  -c, --credential-set strings         Credential to use when installing the bundle. 
   -f, --file string          Path to the bundle file to install.
       --param strings        Define an individual parameter in the form NAME=VALUE.
       --param-file strings   Path to a parameters definition file for the bundle
@@ -709,7 +707,7 @@ parameters:
 
 ### Use a Parameter
 ```yaml
-- "echo Hello, {{ bundle.parameters.name }}"
+- "echo Hello, ${ bundle.parameters.name }
 ```
 
 * Needs double quotes around the yaml entry
@@ -845,7 +843,7 @@ specify a bundle with --file.
 
 Bundles define 1 or more credential(s) that are required to interact with a
 bundle. The bundle definition defines where the credential should be delivered
-to the bundle, i.e. at /root/.kube. A credential set, on the other hand,
+to the bundle, i.e. at /home/nonroot/.kube. A credential set, on the other hand,
 represents the source data that you wish to use when interacting with the
 bundle. These will typically be environment variables or files on your local
 file system.
@@ -871,7 +869,7 @@ credentials:
 ```yaml
 credentials:
 - name: kubeconfig
-  path: /root/.kube/config
+  path: /home/nonroot/.kube/config
 ```
 
 ---
@@ -908,12 +906,12 @@ for the wordpress bundle.
 we all do this together
 
 ---
-## Try it out: porter install --cred
+## Try it out: porter install --credential-set
 
 Install the wordpress bundle and pass it the named set of credentials that you generated.
 
 ```console
-$ porter install --cred wordpress
+$ porter install --credential-set wordpress
 ```
 
 ---
@@ -922,11 +920,11 @@ name: cleanup-wordpress
 ## Cleanup Wordpress
 
 ```console
-$ porter uninstall --cred wordpress
+$ porter uninstall --credential-set wordpress
 ```
 
 ???
-Explain why --cred is required again for uninstall 
+Explain why --credential-set is required again for uninstall 
 
 ---
 name: author
@@ -955,7 +953,7 @@ Declare any mixins that you are going to use
 ```yaml
 mixins:
   - azure
-  - helm
+  - helm3
 ```
 
 ---
@@ -987,7 +985,7 @@ credentials:
 - name: SUBSCRIPTION_ID
   env: AZURE_SUBSCRIPTION_ID
 - name: kubeconfig
-  path: /root/.kube/config
+  path: /home/nonroot/.kube/config
 ```
 
 ---
@@ -1013,7 +1011,7 @@ dockerfile: Dockerfile.tmpl
 ### Dockerfile.tmpl
 
 ```Dockerfile
-FROM debian:stretch
+FROM debian:stable-slim
 
 RUN apt-get install -y curl
 
@@ -1113,7 +1111,7 @@ install:
 
 ```yaml
 install:
-- helm:
+- helm3:
     ...
     outputs:
     - name: mysql-password
@@ -1162,7 +1160,7 @@ Porter uses a template engine to substitute values into the manifest.
 
 **Example**
 ```yaml
-connectionString: "{{bundle.outputs.host}}:{{bundle.outputs.port}}"
+connectionString: ${bundle.outputs.host}:${bundle.outputs.port}
 ```
 
 ---
@@ -1291,11 +1289,11 @@ Example (assuming your username is cnabaholic):
 
 # Now run your bundle
 
-* Run `porter install --tag [your new tag]`
+* Run `porter install --reference [your new tag]`
 
 Example tag of `cnabaholic/hello-people:latest`:
 
-* Run `porter install --tag cnabaholic/hello-people:latest`
+* Run `porter install --reference cnabaholic/hello-people:latest`
 
 ---
 
@@ -1307,7 +1305,7 @@ Example tag of `cnabaholic/hello-people:latest`:
   * A new manifest list for the bundle credentials and parameters.
 * When pulling a bundle, it reconstructs it from the parts mentioned above
 
-See [OCI Bundle Format](/oci-bundle-format) for an example.
+See [OCI Bundle Format](/oci-bundle-format/) for an example.
 
 ---
 class: center, middle
@@ -1343,13 +1341,13 @@ convert cute pictures of gophers into ASCII art when you install the bundle.
 Here are some hints so that you can try to solve it in your own way. 
 For the full solution, see the [asciiart][asciiart] directory in the workshop materials.
 
-* A good base image for go is `golang:1.11-stretch`.
+* A good base image for go is `golang:latest`.
 * You need to run `porter build` after modifying the Dockerfile.tmpl to rebuild
 your invocation image to pick up your changes.
 * Don't forget to copy your images into your invocation image to /cnab/app/.
 * The command to run is `goasciiart -p=gopher.png -w=100`.
 
-[asciiart]: https://github.com/deislabs/porter/tree/main/workshop/asciiart
+[asciiart]: /src/workshop/asciiart
 
 ---
 name: break-glass

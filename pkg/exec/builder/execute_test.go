@@ -1,10 +1,15 @@
 package builder
 
 import (
+	"context"
 	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
-	"get.porter.sh/porter/pkg/context"
+	"get.porter.sh/porter/pkg"
+	porterruntime "get.porter.sh/porter/pkg/runtime"
 	"get.porter.sh/porter/pkg/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,9 +32,10 @@ func TestMain(m *testing.M) {
 }
 
 func TestExecuteSingleStepAction(t *testing.T) {
-	c := context.NewTestContext(t)
+	ctx := context.Background()
+	c := porterruntime.NewTestRuntimeConfig(t)
 
-	err := c.FileSystem.WriteFile("config.txt", []byte("abc123"), 0644)
+	err := c.FileSystem.WriteFile("config.txt", []byte("abc123"), pkg.FileModeWritable)
 	require.NoError(t, err)
 
 	a := TestAction{
@@ -44,10 +50,9 @@ func TestExecuteSingleStepAction(t *testing.T) {
 		},
 	}
 
-	os.Setenv(test.ExpectedCommandEnv, "foo")
-	defer os.Unsetenv(test.ExpectedCommandEnv)
+	c.Setenv(test.ExpectedCommandEnv, "foo")
 
-	_, err = ExecuteSingleStepAction(c.Context, a)
+	_, err = ExecuteSingleStepAction(ctx, c.RuntimeConfig, a)
 	require.NoError(t, err, "ExecuteSingleStepAction should not have returned an error")
 
 	exists, _ := c.FileSystem.Exists("/cnab/app/porter/outputs/file")
@@ -119,7 +124,8 @@ func (s TestOrderedStep) GetSuffixArguments() []string {
 }
 
 func TestExecuteStep_HasOrderedArguments(t *testing.T) {
-	c := context.NewTestContext(t)
+	ctx := context.Background()
+	c := porterruntime.NewTestRuntimeConfig(t)
 	step := TestOrderedStep{
 		TestStep: TestStep{
 			Command:   "docker",
@@ -131,9 +137,62 @@ func TestExecuteStep_HasOrderedArguments(t *testing.T) {
 		SuffixArguments: []string{"."},
 	}
 
-	os.Setenv(test.ExpectedCommandEnv, "docker build -t getporter/porter-hello:latest .")
-	defer os.Unsetenv(test.ExpectedCommandEnv)
+	c.Setenv(test.ExpectedCommandEnv, "docker build -t getporter/porter-hello:latest .")
 
-	_, err := ExecuteStep(c.Context, step)
+	_, err := ExecuteStep(ctx, c.RuntimeConfig, step)
 	require.NoError(t, err, "ExecuteStep failed")
+}
+
+func TestExecuteStep_SpecifiesCustomWorkingDirectory(t *testing.T) {
+	ctx := context.Background()
+	c := porterruntime.NewTestRuntimeConfig(t)
+	c.TestContext.UseFilesystem()
+	wd, _ := filepath.EvalSymlinks(os.TempDir())
+
+	step := TestOrderedStep{
+		TestStep: TestStep{
+			Command:          "pwd",
+			Arguments:        []string{},
+			WorkingDirectory: wd,
+		},
+		SuffixArguments: []string{},
+	}
+
+	if runtime.GOOS == "windows" {
+		step.TestStep.Command = "cmd.exe"
+		step.Arguments = []string{"/c", "cd"}
+	}
+
+	_, err := ExecuteStep(ctx, c.RuntimeConfig, step)
+	assert.Equal(t, wd, strings.TrimRight(c.TestContext.GetOutput(), "\r\n"))
+	require.NoError(t, err, "Execute Step failed")
+}
+
+func (s TestOrderedStep) GetEnvironmentVars() map[string]string {
+	return s.EnvironmentVars
+}
+
+func TestExecuteStep_WithEnvironmentVars(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+
+	ctx := context.Background()
+	c := porterruntime.NewTestRuntimeConfig(t)
+	c.TestContext.UseFilesystem()
+	step := TestOrderedStep{
+		TestStep: TestStep{
+			Command:         "env",
+			EnvironmentVars: map[string]string{"SOME_VAR_123": "foo"},
+		},
+	}
+
+	c.Setenv(test.ExpectedCommandEnv, "env")
+
+	_, err := ExecuteStep(ctx, c.RuntimeConfig, step)
+	require.NoError(t, err, "Execute Step failed")
+	containsEnv := strings.Contains(c.TestContext.GetOutput(), "SOME_VAR_123=foo")
+	// use assert.True rather than assert.Contains so that the env vars are not all sent to the test output. There might
+	// be sensitive stuff in there.
+	assert.True(t, containsEnv, "Env did not contain the key/value we expected.")
 }

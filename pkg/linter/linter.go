@@ -1,16 +1,20 @@
 package linter
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 
-	"get.porter.sh/porter/pkg/context"
+	"get.porter.sh/porter/pkg/config"
 	"get.porter.sh/porter/pkg/manifest"
 	"get.porter.sh/porter/pkg/mixin/query"
 	"get.porter.sh/porter/pkg/pkgmgmt"
+	"get.porter.sh/porter/pkg/portercontext"
+	"get.porter.sh/porter/pkg/tracing"
+	"get.porter.sh/porter/pkg/yaml"
+	"github.com/Masterminds/semver/v3"
 	"github.com/dustin/go-humanize"
-	"github.com/pkg/errors"
 )
 
 // Level of severity for a lint result.
@@ -67,7 +71,9 @@ type Result struct {
 func (r Result) String() string {
 	var buffer strings.Builder
 	buffer.WriteString(fmt.Sprintf("%s(%s) - %s\n", r.Level, r.Code, r.Title))
-	buffer.WriteString(r.Location.String() + "\n")
+	if r.Location.Mixin != "" {
+		buffer.WriteString(r.Location.String() + "\n")
+	}
 
 	if r.Message != "" {
 		buffer.WriteString(r.Message + "\n")
@@ -94,7 +100,7 @@ type Location struct {
 	// install:
 	//  - exec: (1)
 	//     ...
-	//  - helm: (2)
+	//  - helm3: (2)
 	//     ...
 	//  - exec: (3)
 	//     ...
@@ -140,40 +146,210 @@ func (r Results) HasError() bool {
 // Linter manages executing the lint command for all affected mixins and reporting
 // the results.
 type Linter struct {
-	*context.Context
+	*portercontext.Context
 	Mixins pkgmgmt.PackageManager
 }
 
-func New(cxt *context.Context, mixins pkgmgmt.PackageManager) *Linter {
+func New(cxt *portercontext.Context, mixins pkgmgmt.PackageManager) *Linter {
 	return &Linter{
 		Context: cxt,
 		Mixins:  mixins,
 	}
 }
 
-func (l *Linter) Lint(m *manifest.Manifest) (Results, error) {
-	// TODO: perform any porter level linting
-	// e.g. metadata, credentials, properties, outputs, dependencies, etc
+type action struct {
+	name  string
+	steps manifest.Steps
+}
 
-	if l.Debug {
-		fmt.Fprintln(l.Err, "Running linters for each mixin used in the manifest...")
-	}
-
-	q := query.New(l.Context, l.Mixins)
-	responses, err := q.Execute("lint", query.NewManifestGenerator(m))
-	if err != nil {
-		return nil, err
-	}
+func (l *Linter) Lint(ctx context.Context, m *manifest.Manifest, config *config.Config) (Results, error) {
+	// Check for reserved porter prefix on parameter names
+	reservedPrefixes := []string{"porter-", "porter_"}
+	params := m.Parameters
 
 	var results Results
-	for mixin, response := range responses {
-		var r Results
-		err = json.Unmarshal([]byte(response), &r)
+
+	for _, param := range params {
+		paramName := strings.ToLower(param.Name)
+		for _, reservedPrefix := range reservedPrefixes {
+			if strings.HasPrefix(paramName, reservedPrefix) {
+
+				res := Result{
+					Level: LevelError,
+					Location: Location{
+						Action:          "",
+						Mixin:           "",
+						StepNumber:      0,
+						StepDescription: "",
+					},
+					Code:    "porter-100",
+					Title:   "Reserved name error",
+					Message: param.Name + " has a reserved prefix. Parameters cannot start with porter- or porter_",
+					URL:     "https://porter.sh/reference/linter/#porter-100",
+				}
+				results = append(results, res)
+			}
+		}
+	}
+
+	// Check if parameters apply to the steps
+	ctx, span := tracing.StartSpan(ctx)
+	defer span.EndSpan()
+
+	span.Debug("Validating that parameters applies to the actions...")
+	tmplParams := m.GetTemplatedParameters()
+	actions := []action{
+		{"install", m.Install},
+		{"upgrade", m.Upgrade},
+		{"uninstall", m.Uninstall},
+	}
+	for actionName, steps := range m.CustomActions {
+		actions = append(actions, action{actionName, steps})
+	}
+	for _, action := range actions {
+		res, err := validateParamsAppliesToAction(m, action.steps, tmplParams, action.name, config)
 		if err != nil {
-			return nil, errors.Wrapf(err, "unable to parse lint response from mixin %q", mixin)
+			return nil, span.Error(fmt.Errorf("error validating action: %s", action.name))
+		}
+		results = append(results, res...)
+	}
+
+	deps := make(map[string]interface{}, len(m.Dependencies.Requires))
+	for _, dep := range m.Dependencies.Requires {
+		if _, exists := deps[dep.Name]; exists {
+			res := Result{
+				Level: LevelError,
+				Location: Location{
+					Action:          "",
+					Mixin:           "",
+					StepNumber:      0,
+					StepDescription: "",
+				},
+				Code:    "porter-102",
+				Title:   "Dependency error",
+				Message: fmt.Sprintf("The dependency %s is defined multiple times", dep.Name),
+				URL:     "https://porter.sh/reference/linter/#porter-102",
+			}
+			results = append(results, res)
+		} else {
+			deps[dep.Name] = nil
+		}
+	}
+
+	span.Debug("Running linters for each mixin used in the manifest...")
+	q := query.New(l.Context, l.Mixins)
+	responses, err := q.Execute(ctx, "lint", query.NewManifestGenerator(m))
+	if err != nil {
+		return nil, span.Error(err)
+	}
+
+	for _, response := range responses {
+		if response.Error != nil {
+			// Ignore mixins that do not support the lint command
+			if strings.Contains(response.Error.Error(), "unknown command") {
+				continue
+			}
+			// put a helpful error when the mixin is not installed
+			if strings.Contains(response.Error.Error(), "not installed") {
+				return nil, span.Error(fmt.Errorf("mixin %[1]s is not currently installed. To find view more details you can run: porter mixin search %[1]s. To install you can run porter mixin install %[1]s", response.Name))
+			}
+			return nil, span.Error(fmt.Errorf("lint command failed for mixin %s: %s", response.Name, response.Stdout))
+		}
+
+		var r Results
+		err = json.Unmarshal([]byte(response.Stdout), &r)
+		if err != nil {
+			return nil, span.Error(fmt.Errorf("unable to parse lint response from mixin %s: %w", response.Name, err))
 		}
 
 		results = append(results, r...)
+	}
+
+	span.Debug("Getting versions for each mixin used in the manifest...")
+	err = l.validateVersionNumberConstraints(ctx, m)
+	if err != nil {
+		return nil, span.Error(err)
+	}
+
+	return results, nil
+}
+
+func (l *Linter) validateVersionNumberConstraints(ctx context.Context, m *manifest.Manifest) error {
+	for _, mixin := range m.Mixins {
+		if mixin.Version != nil {
+			installedMeta, err := l.Mixins.GetMetadata(ctx, mixin.Name)
+			if err != nil {
+				return fmt.Errorf("unable to get metadata from mixin %s: %w", mixin.Name, err)
+			}
+			installedVersion := installedMeta.GetVersionInfo().Version
+
+			err = validateSemverConstraint(mixin.Name, installedVersion, mixin.Version)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func validateSemverConstraint(name string, installedVersion string, versionConstraint *semver.Constraints) error {
+	v, err := semver.NewVersion(installedVersion)
+	if err != nil {
+		return fmt.Errorf("invalid version number from mixin %s: %s. %w", name, installedVersion, err)
+	}
+
+	if !versionConstraint.Check(v) {
+		return fmt.Errorf("mixin %s is installed at version %s but your bundle requires version %s", name, installedVersion, versionConstraint)
+	}
+	return nil
+}
+
+func validateParamsAppliesToAction(m *manifest.Manifest, steps manifest.Steps, tmplParams manifest.ParameterDefinitions, actionName string, config *config.Config) (Results, error) {
+	var results Results
+	for stepNumber, step := range steps {
+		data, err := yaml.Marshal(step.Data)
+		if err != nil {
+			return nil, fmt.Errorf("error during marshalling: %w", err)
+		}
+
+		tmplResult, err := m.ScanManifestTemplating(data, config)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing templating: %w", err)
+		}
+
+		for _, variable := range tmplResult.Variables {
+			paramName, ok := m.GetTemplateParameterName(variable)
+			if !ok {
+				continue
+			}
+
+			for _, tmplParam := range tmplParams {
+				if tmplParam.Name != paramName {
+					continue
+				}
+				if !tmplParam.AppliesTo(actionName) {
+					description, err := step.GetDescription()
+					if err != nil {
+						return nil, fmt.Errorf("error getting step description: %w", err)
+					}
+					res := Result{
+						Level: LevelError,
+						Location: Location{
+							Action:          actionName,
+							Mixin:           step.GetMixinName(),
+							StepNumber:      stepNumber + 1,
+							StepDescription: description,
+						},
+						Code:    "porter-101",
+						Title:   "Parameter does not apply to action",
+						Message: fmt.Sprintf("Parameter %s does not apply to %s action", paramName, actionName),
+						URL:     "https://porter.sh/docs/references/linter/#porter-101",
+					}
+					results = append(results, res)
+				}
+			}
+		}
 	}
 
 	return results, nil

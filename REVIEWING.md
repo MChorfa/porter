@@ -13,10 +13,10 @@ Thank you for reviewing pull requests for us! 💖
 Here are the values and etiquette that we follow to ensure a welcoming, inclusive
 project that doesn't burn out our authors or our reviewers. 😅
 
-* We ask that authors respect reviewers time. Check out the
+* We ask that authors respect reviewers' time. Check out the
   [Contributing Guide](CONTRIBUTING.md) and know that you can ask the
-  author to do their part to make _your_ part managable.
-* We ask that reviewers respect authors time. Please do your best to review
+  author to do their part to make _your_ part manageable.
+* We ask that reviewers respect authors' time. Please do your best to review
   a pull request in a reasonable amount of time once you have assigned it to
   yourself.
 * The definition of "reasonable amount of time" is 3 business days. The ask is
@@ -38,9 +38,9 @@ project that doesn't burn out our authors or our reviewers. 😅
    For example, it is missing an agreed upon solution, requires an explanation
    from the author, has a very large set of changes that are not easy to review,
    etc., ask the author to correct that up-front.
-1. When you provide feedback, make it clear if the change must be made in order
+1. When you provide feedback, make it clear if the change must be made
    for the pull request to be approved, or if it is just a suggestion. Mark
-   suggestions with **nit**, for example `nit: I prefer that the bikeshed be
+   suggestions with **nit**, for example, `nit: I prefer that the bikeshed be
    blue`.
 1. When the pull request is ready to merge, squash the commits they require
    tidying unless the author asked to do that themselves.
@@ -71,7 +71,7 @@ reviewers.
 ## Giving feedback
 
 * Be kind. Here is [good article][kind-reviews] with example code reviews and 
-  how to improve your feedback. Giving feedback of this caliber is an requirement 
+  how to improve your feedback. Giving feedback of this caliber is a requirement 
   of maintainers and those who cannot do so will have the maintainer role revoked.
 * Request changes for bugs and program correctness.
 * Request changes to be consistent with existing precedent in the codebase.
@@ -87,16 +87,16 @@ reviewers.
 
 🧀💨
 
-Our CI system watches for tags, and when a tag is pushed, it executes the
-publish target in the Makefile. When you are asked to cut a new release,
-here is the process:
+Our CI system watches for tags, and when a tag is pushed, cuts a release
+of Porter. When you are asked to cut a new release, here is the process:
 
-1. Figure out the correct version number, we follow [semver](semver.org):
-    * Bump the major segment if there are any breaking changes.
+1. Figure out the correct version number using our [version strategy].
+    * Bump the major segment if there are any breaking changes, and the 
+      version is greater than v1.0.0
     * Bump the minor segment if there are new features only.
     * Bump the patch segment if there are bug fixes only.
-    * Bump the build segment (version-prerelease.BUILD) if you only
-      fixed something in the build, but the final binaries are the same.
+    * Bump the pre-release number (version-prerelease.NUMBER) if this is
+      a pre-release, e.g. alpha/beta/rc.
 1. First, ensure that the main CI build has already passed for 
     the [commit that you want to tag][commits], and has published the canary binaries. 
     
@@ -108,31 +108,25 @@ here is the process:
     git tag VERSION -a -m ""
     git push --tags
     ```
+    If the CI build failed to build for the release, fix the problem first. Then increment the PATCH version, e.g. v0.7.0->v0.7.1, and go through the above steps again to publish the binaries. It's often a good pratice to finish the release first before updating any of our docs that references the latest release.
 
 1. Generate some release notes and put them into the release on GitHub.
-    The following command gives you a list of all the merged pull requests:
-
+   - Go to Porter Github repository and find the newly created release tag. You should see a
+   "auto generate release notes" button to create release notes for the release.
+   - Modify the generated release note to call out any breaking or notable changes in the release.
+   - Include instructions for installing or upgrading to the new release:
     ```
-    git log --oneline OLDVERSION..NEWVERSION
-    ```
-
-    You need to go through that and make a bulleted list of features
-    and fixes with the PR titles and links to the PR. If you come up with an
-    easier way of doing this, please submit a PR to update these instructions. 😅
-
-    ```
-    # Features
-    * PR TITLE (#PR NUMBER)
-
-    # Fixes
-    * PR TITLE (#PR NUMBER)
-
-    # Install or Upgrade
-    Run (or re-run) the installation from https://porter.sh/install to get the 
+      # Install or Upgrade
+      Run (or re-run) the installation from https://porter.sh/install to get the
     latest version of porter.
     ```
-1. Name the release after the version.
+1. Announce the new release in the community.
+   - Email the [mailing list](https://porter.sh/mailing-list) to announce the release. In your email, call out any breaking or notable changes.
+   - Post a message in [Porter's slack channel](https://porter.sh/community/#slack).
+1. If there are any issues fixed in the release and someone is waiting for the fix, comment on the issue to let them know and link to the release.
+1. If the release contains new features, it should be announced through a [blog](https://porter.sh/blog/) post and on Porter's twitter account.
 
-[maintainers]: https://github.com/orgs/deislabs/teams/porter-maintainers
-[admins]: https://github.com/orgs/deislabs/teams/porter-admins
-[commits]: https://github.com/deislabs/porter/commits/main
+[maintainers]: https://github.com/orgs/getporter/teams/maintainers
+[admins]: https://github.com/orgs/getporter/teams/admins
+[commits]: https://github.com/getporter/porter/commits/main
+[version strategy]: https://porter.sh/project/version-strategy/

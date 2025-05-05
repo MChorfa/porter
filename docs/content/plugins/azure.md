@@ -1,13 +1,16 @@
 ---
-title: azure plugin
+title: Azure Plugin
 description: Integrate Porter with Azure Cloud
+aliases:
+  - /plugins/azure/
+  - /plugins/azure-keyvault/
 ---
 
-<img src="/images/mixins/azure.png" class="mixin-logo" style="width: 300px"/>
+<img src="/images/plugins/azure.png" class="mixin-logo" style="width: 300px"/>
 
 Integrate Porter with Azure Cloud.
 
-Source: https://github.com/deislabs/porter-azure-plugins
+Source: https://github.com/getporter/azure-plugins
 
 ## Install or Upgrade
 
@@ -15,52 +18,36 @@ Source: https://github.com/deislabs/porter-azure-plugins
 porter plugin install azure
 ```
 
+Note that the v1 release of the plugin only works with Porter v1.0.0-alpha.20 and higher.
+
 ## Plugin Configuration
-
-### Storage
-
-Storage plugins allow Porter to store data, such as installation data and
-credentials or parameters, in Azure cloud.
-
-#### Blob
-
-The `azure.blob` plugin stores data in Azure Blob Storage. 
-
-1. Open, or create, `~/.porter/config.toml`.
-1. Add the following line to activate the Azure blob storage plugin:
-
-    ```toml
-    default-storage-plugin = "azure.blob"
-    ```
-
-1. [Create a storage account][account]
-1. [Create a container][container] named `porter`.
-1. [Copy the connection string][connstring] for the storage account. Then set it as an environment variable named 
-    `AZURE_STORAGE_CONNECTION_STRING`.
 
 ### Secrets
 
-Secrets plugins allow Porter to inject secrets into credential sets.
+Secrets plugins allow Porter to store and resolve sensitive bundle data.
 
-For example, if your team has a shared key vault with a database password, you
+For example, to resolve a database password, if your team has a shared key vault that has the password stored in it, you
 can use the keyvault plugin to inject it as a credential when you install a bundle.
+Another usecase is to store any sensitive bundle parameters and outputs. For
+example, if a bundle depends on a redis bundle to generate a database connection
+string as an output, the connection string will be securely stored in the key
+vault.
 
 #### Key Vault
 
 The `azure.keyvault` plugin resolves credentials against secrets in Azure Key Vault.
 
-1. Open, or create, `~/.porter/config.toml`
+1. Open, or create, `~/.porter/config.yaml`
 1. Add the following lines to activate the Azure keyvault secrets plugin:
 
-    ```toml
-    default-secrets = "mysecrets"
+    ```yaml
+    default-secrets: "mysecrets"
     
-    [[secrets]]
-    name = "mysecrets"
-    plugin = "azure.keyvault"
-    
-    [secrets.config]
-    vault = "myvault"
+    secrets:
+      name: "mysecrets"
+      plugin: "azure.keyvault"
+      config:
+        vault: "myvault"
     ```
 1. [Create a key vault][keyvault] and set the vault name in the config with name of the vault.
 1. [Create a service principal][sp] and create an Access Policy on the vault giving Get and List secret permissions.

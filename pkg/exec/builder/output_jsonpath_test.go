@@ -1,20 +1,24 @@
 package builder
 
 import (
-	"io/ioutil"
+	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
-	"get.porter.sh/porter/pkg/context"
+	"get.porter.sh/porter/pkg/portercontext"
+	"get.porter.sh/porter/pkg/runtime"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type TestStep struct {
-	Command   string
-	Arguments []string
-	Flags     Flags
-	Outputs   []Output
+	Command          string
+	Arguments        []string
+	Flags            Flags
+	Outputs          []Output
+	WorkingDirectory string
+	EnvironmentVars  map[string]string
 }
 
 func (s TestStep) GetCommand() string {
@@ -23,6 +27,10 @@ func (s TestStep) GetCommand() string {
 
 func (s TestStep) GetArguments() []string {
 	return s.Arguments
+}
+
+func (s TestStep) GetWorkingDir() string {
+	return s.WorkingDirectory
 }
 
 func (s TestStep) GetFlags() Flags {
@@ -59,17 +67,19 @@ func TestJsonPathOutputs(t *testing.T) {
 		{"array", "$[*].id", `["1085517466897181794"]`},
 		{"object", "$[0].tags", `{"fingerprint":"42WmSpB8rSM="}`},
 		{"integer", "$[0].index", `0`},
+		{"big integer", "$[0]._id", `123123123`},
+		{"exponential notation", "$[0]._bigId", `1.23123123e+08`},
 		{"boolean", "$[0].deletionProtection", `false`},
 		{"string", "$[0].cpuPlatform", `Intel Haswell`},
 	}
 
-	stdout, err := ioutil.ReadFile("testdata/install-output.json")
+	stdout, err := os.ReadFile("testdata/install-output.json")
 	require.NoError(t, err, "could not read testdata")
 
 	for _, tc := range testcases {
-
 		t.Run(tc.name, func(t *testing.T) {
-			c := context.NewTestContext(t)
+			ctx := context.Background()
+			cfg := runtime.NewTestRuntimeConfig(t)
 
 			step := TestStep{
 				Outputs: []Output{
@@ -77,11 +87,11 @@ func TestJsonPathOutputs(t *testing.T) {
 				},
 			}
 
-			err = ProcessJsonPathOutputs(c.Context, step, string(stdout))
+			err = ProcessJsonPathOutputs(ctx, cfg.RuntimeConfig, step, string(stdout))
 			require.NoError(t, err, "ProcessJsonPathOutputs should not return an error")
 
-			f := filepath.Join(context.MixinOutputsDir, tc.name)
-			gotOutput, err := c.FileSystem.ReadFile(f)
+			f := filepath.Join(portercontext.MixinOutputsDir, tc.name)
+			gotOutput, err := cfg.FileSystem.ReadFile(f)
 			require.NoError(t, err, "could not read output file %s", f)
 
 			wantOutput := tc.wantOutput
@@ -90,8 +100,9 @@ func TestJsonPathOutputs(t *testing.T) {
 	}
 }
 
-func TestJsonPathOutputs_NoOutput(t *testing.T) {
-	c := context.NewTestContext(t)
+func TestJsonPathOutputs_DebugPrintsDocument(t *testing.T) {
+	cfg := runtime.NewTestRuntimeConfig(t)
+	ctx := context.Background()
 
 	step := TestStep{
 		Outputs: []Output{
@@ -99,6 +110,26 @@ func TestJsonPathOutputs_NoOutput(t *testing.T) {
 		},
 	}
 
-	err := ProcessJsonPathOutputs(c.Context, step, "")
+	document := `[{"id": "abc123"}]`
+	err := ProcessJsonPathOutputs(ctx, cfg.RuntimeConfig, step, document)
+	require.NoError(t, err)
+	wantDebugLine := `Processing jsonpath output ids using query $[*].id against document
+[{"id": "abc123"}]
+`
+	stderr := cfg.TestContext.GetError()
+	assert.Contains(t, stderr, wantDebugLine, "Debug mode should print the full document and query being captured")
+}
+
+func TestJsonPathOutputs_NoOutput(t *testing.T) {
+	ctx := context.Background()
+	cfg := runtime.NewTestRuntimeConfig(t)
+
+	step := TestStep{
+		Outputs: []Output{
+			TestJsonPathOutput{Name: "ids", JsonPath: "$[*].id"},
+		},
+	}
+
+	err := ProcessJsonPathOutputs(ctx, cfg.RuntimeConfig, step, "")
 	require.NoError(t, err, "ProcessJsonPathOutputs should not return an error when the output buffer is empty")
 }

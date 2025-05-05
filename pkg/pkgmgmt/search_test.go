@@ -3,9 +3,9 @@ package pkgmgmt
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ func TestSearch(t *testing.T) {
 			Name:        "cowsay",
 			Author:      "Porter Authors",
 			Description: "A mixin for using the cowsay cli",
-			URL:         "https://github.com/deislabs/porter-cowsay/releases/download",
+			URL:         "https://github.com/carolynvs/porter-cowsay/releases/download",
 		},
 		{
 			Name:        "cowsayeth",
@@ -63,7 +63,7 @@ func TestSearch(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			data, err := ioutil.ReadFile("testdata/directory/index.json")
+			data, err := os.ReadFile("testdata/directory/index.json")
 			require.NoError(t, err)
 
 			var pkgList PackageList
@@ -119,7 +119,7 @@ func TestGetPackageListings_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, string(bytes))
+		fmt.Fprint(w, string(bytes))
 	}))
 	defer ts.Close()
 

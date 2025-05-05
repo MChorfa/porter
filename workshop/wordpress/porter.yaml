@@ -1,13 +1,16 @@
-name: wordpress
+name: workshop-wordpress
 version: 0.1.0
-tag: getporter/porter-workshop-wordpress
+registry: "localhost:5000"
 
 mixins:
-  - helm
+- helm3:
+    repositories:
+      bitnami:
+        url: "https://charts.bitnami.com/bitnami"
 
 credentials:
 - name: kubeconfig
-  path: /root/.kube/config
+  path: /home/nonroot/.kube/config
 
 parameters:
 - name: namespace
@@ -22,25 +25,26 @@ parameters:
   default: 30030
 
 install:
-- helm:
+- helm3:
     description: "Install MySQL"
     name: porter-workshop-mysql
-    chart: stable/mysql
-    version: 0.10.2
+    chart: bitnami/mysql
+    version: 6.14.2
     namespace: "{{ bundle.parameters.namespace }}"
     replace: true
     set:
-      mysqlDatabase: wordpress
-      mysqlUser: wordpress
+      db.name: wordpress
+      db.user: wordpress
     outputs:
     - name: mysql-password
       secret: porter-workshop-mysql
       key: mysql-password
 
-- helm:
+- helm3:
     description: "Helm Install Wordpress"
     name: porter-workshop-wordpress
-    chart: stable/wordpress
+    chart: bitnami/wordpress
+    version: "9.9.3"
     namespace: wordpress
     replace: true
     set:
@@ -55,7 +59,7 @@ install:
       service.nodePorts.http: "{{ bundle.parameters.port }}"
 
 uninstall:
-  - helm:
+  - helm3:
       description: "Helm Uninstall Wordpress"
       purge: true
       releases:

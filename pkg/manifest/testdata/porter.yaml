@@ -1,18 +1,33 @@
+schemaType: Bundle
+schemaVersion: 1.0.0
+name: mybun
 version: 0.1.0
-tag: example.com/mybun
+registry: example.com
 
 mixins:
   - exec
 
+# contains a mix of v1 and v2 supported syntax which lights up depending on what is enabled in config
 dependencies:
-  - name: mysql
-    tag: "getporter/azure-mysql:5.7"
-    parameters:
-      database-name: wordpress
+  requires:
+    - name: mysql
+      bundle:
+        reference: "getporter/azure-mysql:5.7"
+        version: 5.7.x
+        # TODO(PEP003): Implement in https://github.com/getporter/porter/issues/2548
+        #interface:
+        #  reference: "getporter/azure-mysql:5.7-interface"
+        #  document:
+        #    parameters:
+        #      - name: password
+        #        type: string
+      parameters:
+        database-name: wordpress
+      credentials:
+        password: mcstuffins
 
 install:
   - exec:
-      description: "Install Hello World"
       command: bash
       flags:
         c: echo Hello World
@@ -31,4 +46,3 @@ required:
   - requiredExtension1
   - requiredExtension2:
       config: true
-

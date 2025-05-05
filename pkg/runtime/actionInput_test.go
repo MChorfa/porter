@@ -3,11 +3,11 @@ package runtime
 import (
 	"testing"
 
+	"get.porter.sh/porter/pkg/cnab"
 	"get.porter.sh/porter/pkg/manifest"
-	"github.com/cnabio/cnab-go/claim"
+	"get.porter.sh/porter/pkg/yaml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
 
 func TestActionInput_MarshalYAML(t *testing.T) {
@@ -20,12 +20,15 @@ func TestActionInput_MarshalYAML(t *testing.T) {
 	}
 
 	input := &ActionInput{
-		action: claim.ActionInstall,
+		action: cnab.ActionInstall,
 		Steps:  []*manifest.Step{s},
 	}
 
 	b, err := yaml.Marshal(input)
 	require.NoError(t, err)
-	wantYaml := "install:\n- exec:\n    command: echo hi\n"
+	wantYaml := `install:
+  - exec:
+      command: echo hi
+`
 	assert.Equal(t, wantYaml, string(b))
 }

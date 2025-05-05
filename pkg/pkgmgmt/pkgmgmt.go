@@ -1,22 +1,24 @@
 package pkgmgmt
 
 import (
-	"fmt"
+	"context"
+	"net/url"
 	"os/exec"
+	"path"
 
-	"get.porter.sh/porter/pkg/context"
+	"get.porter.sh/porter/pkg/portercontext"
 )
 
 // PackageManager handles searching, installing and communicating with packages.
 type PackageManager interface {
 	List() ([]string, error)
 	GetPackageDir(name string) (string, error)
-	GetMetadata(name string) (PackageMetadata, error)
-	Install(InstallOptions) error
-	Uninstall(UninstallOptions) error
+	GetMetadata(ctx context.Context, name string) (PackageMetadata, error)
+	Install(ctx context.Context, opts InstallOptions) error
+	Uninstall(ctx context.Context, opts UninstallOptions) error
 
 	// Run a command against the installed package.
-	Run(pkgContext *context.Context, name string, commandOpts CommandOptions) error
+	Run(ctx context.Context, pkgContext *portercontext.Context, name string, commandOpts CommandOptions) error
 }
 
 type PreRunHandler func(command string, cmd *exec.Cmd)
@@ -41,7 +43,8 @@ type CommandOptions struct {
 	PreRun PreRunHandler
 }
 
-// GetPackageListURL returns the URL for package listings of the provided type
-func GetPackageListURL(pkgType string) string {
-	return fmt.Sprintf("https://cdn.porter.sh/%ss/index.json", pkgType)
+// GetPackageListURL returns the URL for package listings of the provided type.
+func GetPackageListURL(mirror url.URL, pkgType string) string {
+	mirror.Path = path.Join(mirror.Path, pkgType+"s", "index.json")
+	return mirror.String()
 }

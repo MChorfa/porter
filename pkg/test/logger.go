@@ -8,6 +8,10 @@ type Logger struct {
 }
 
 func (l Logger) Write(p []byte) (n int, err error) {
+	defer func() {
+		_ = recover()
+	}()
+
 	l.T.Log(string(p))
 	return len(p), nil
 }

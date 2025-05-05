@@ -1,11 +1,14 @@
 package editor
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"get.porter.sh/porter/pkg/context"
+	"get.porter.sh/porter/pkg"
+	"get.porter.sh/porter/pkg/portercontext"
 )
 
 // Editor displays content to a user using an external text editor, like vi or notepad.
@@ -18,13 +21,13 @@ import (
 // that might be stored on a remote server. For example: the content could be retrieved
 // from the remote store, edited locally, then saved back.
 type Editor struct {
-	*context.Context
+	*portercontext.Context
 	contents     []byte
 	tempFilename string
 }
 
 // New returns a new Editor with the temp filename and contents provided.
-func New(context *context.Context, tempFilename string, contents []byte) *Editor {
+func New(context *portercontext.Context, tempFilename string, contents []byte) *Editor {
 	return &Editor{
 		Context:      context,
 		tempFilename: tempFilename,
@@ -32,14 +35,14 @@ func New(context *context.Context, tempFilename string, contents []byte) *Editor
 	}
 }
 
-func editorArgs(filename string) []string {
-	shell := defaultShell
-	if os.Getenv("SHELL") != "" {
-		shell = os.Getenv("SHELL")
+func (e *Editor) editorArgs(filename string) []string {
+	shell := e.Getenv("SHELL")
+	if shell == "" {
+		shell = defaultShell
 	}
-	editor := defaultEditor
-	if os.Getenv("EDITOR") != "" {
-		editor = os.Getenv("EDITOR")
+	editor := e.Getenv("EDITOR")
+	if editor == "" {
+		editor = defaultEditor
 	}
 
 	// Example of what will be run:
@@ -54,13 +57,14 @@ func editorArgs(filename string) []string {
 
 // Run opens the editor, displaying the contents through a temporary file.
 // The content is returned once the editor closes.
-func (e *Editor) Run() ([]byte, error) {
-	tempFile, err := e.FileSystem.OpenFile(filepath.Join(os.TempDir(), e.tempFilename), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+func (e *Editor) Run(ctx context.Context) ([]byte, error) {
+	tempFile, err := e.FileSystem.OpenFile(filepath.Join(os.TempDir(), e.tempFilename), os.O_RDWR|os.O_CREATE|os.O_EXCL, pkg.FileModeWritable)
 	if err != nil {
 		return nil, err
 	}
-	defer e.FileSystem.Remove(tempFile.Name())
-
+	defer func() {
+		err = errors.Join(err, e.FileSystem.Remove(tempFile.Name()))
+	}()
 	_, err = tempFile.Write(e.contents)
 	if err != nil {
 		return nil, err
@@ -69,8 +73,8 @@ func (e *Editor) Run() ([]byte, error) {
 	// close here without defer so cmd can grab the file
 	tempFile.Close()
 
-	args := editorArgs(tempFile.Name())
-	cmd := e.NewCommand(args[0], args[1:]...)
+	args := e.editorArgs(tempFile.Name())
+	cmd := e.NewCommand(ctx, args[0], args[1:]...)
 	cmd.Stdout = e.Out
 	cmd.Stderr = e.Err
 	cmd.Stdin = e.In
@@ -84,5 +88,5 @@ func (e *Editor) Run() ([]byte, error) {
 		return nil, err
 	}
 
-	return contents, nil
+	return contents, err
 }

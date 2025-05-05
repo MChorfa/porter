@@ -1,6 +1,7 @@
 package porter
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,9 +10,11 @@ import (
 
 func TestInvokeOptions_Validate_ActionRequired(t *testing.T) {
 	p := NewTestPorter(t)
-	opts := InvokeOptions{}
+	defer p.Close()
 
-	err := opts.Validate(nil, p.Porter)
+	opts := NewInvokeOptions()
+
+	err := opts.Validate(context.Background(), nil, p.Porter)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--action is required")

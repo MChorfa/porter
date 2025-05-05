@@ -4,22 +4,24 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBundlePullOptions_validtag(t *testing.T) {
 	opts := BundlePullOptions{
-		Tag: "deislabs/kubetest:1.0",
+		Reference: "deislabs/kubetest:1.0",
 	}
 
-	err := opts.validateTag()
-	assert.NoError(t, err, "valid tag should not produce an error")
+	err := opts.Validate()
+	require.NoError(t, err, "valid tag should not produce an error")
+	assert.Equal(t, opts.Reference, opts.GetReference().String())
 }
 
 func TestBundlePullOptions_invalidtag(t *testing.T) {
 	opts := BundlePullOptions{
-		Tag: "deislabs/kubetest:1.0:ahjdljahsdj",
+		Reference: "deislabs/kubetest:1.0:ahjdljahsdj",
 	}
 
-	err := opts.validateTag()
-	assert.Error(t, err, "invalid tag should produce an error")
+	err := opts.Validate()
+	require.Error(t, err, "invalid tag should produce an error")
 }

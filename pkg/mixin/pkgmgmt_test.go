@@ -1,7 +1,7 @@
 package mixin
 
 import (
-	"os"
+	"context"
 	"testing"
 
 	"get.porter.sh/porter/pkg/pkgmgmt"
@@ -16,24 +16,23 @@ func TestRunner_BuildCommand(t *testing.T) {
 		runnerCommand string
 		wantCommand   string
 	}{
-		{"build", "build", "/root/.porter/mixins/exec/exec build"},
-		{"install", "install", "/root/.porter/mixins/exec/exec install"},
-		{"upgrade", "upgrade", "/root/.porter/mixins/exec/exec upgrade"},
-		{"uninstall", "uninstall", "/root/.porter/mixins/exec/exec uninstall"},
-		{"invoke", "status", "/root/.porter/mixins/exec/exec invoke --action status"},
-		{"version", "version --output json", "/root/.porter/mixins/exec/exec version --output json"},
+		{"build", "build", "/home/myuser/.porter/mixins/exec/exec build\n\\home\\myuser\\.porter\\mixins\\exec\\exec.exe build"},
+		{"install", "install", "/home/myuser/.porter/mixins/exec/exec install\n\\home\\myuser\\.porter\\mixins\\exec\\exec.exe install"},
+		{"upgrade", "upgrade", "/home/myuser/.porter/mixins/exec/exec upgrade\n\\home\\myuser\\.porter\\mixins\\exec\\exec.exe upgrade"},
+		{"uninstall", "uninstall", "/home/myuser/.porter/mixins/exec/exec uninstall\n\\home\\myuser\\.porter\\mixins\\exec\\exec.exe uninstall"},
+		{"invoke", "status", "/home/myuser/.porter/mixins/exec/exec invoke --action status\n\\home\\myuser\\.porter\\mixins\\exec\\exec.exe invoke --action status"},
+		{"version", "version --output json", "/home/myuser/.porter/mixins/exec/exec version --output json\n\\home\\myuser\\.porter\\mixins\\exec\\exec.exe version --output json"},
 	}
 
-	os.Unsetenv(test.ExpectedCommandEnv)
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 			r := client.NewTestRunner(t, "exec", "mixins", false)
-			r.Debug = false
-			os.Setenv(test.ExpectedCommandEnv, tc.wantCommand)
+			r.Setenv(test.ExpectedCommandEnv, tc.wantCommand)
 
 			mgr := PackageManager{}
 			cmd := pkgmgmt.CommandOptions{Command: tc.runnerCommand, PreRun: mgr.PreRunMixinCommandHandler}
-			err := r.Run(cmd)
+			err := r.Run(ctx, cmd)
 			require.NoError(t, err)
 		})
 	}

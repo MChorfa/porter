@@ -1,9 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"os"
 	"strings"
 	"testing"
 
+	"get.porter.sh/porter/pkg"
+	"get.porter.sh/porter/tests"
+
+	"get.porter.sh/porter/pkg/porter"
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -12,14 +20,19 @@ func TestValidateInstallCommand(t *testing.T) {
 		name      string
 		args      string
 		wantError string
+		wantOut   string
 	}{
-		{"no args", "install", ""},
-		{"invalid param", "install --param A:B", "invalid parameter (A:B), must be in name=value format"},
+		{"no args", "install -r ghcr.io/getporter/examples/porter-hello:v0.2.0", "", ""},
+		// --cred should still work, but print a message
+		{"old cred flag", "install --cred mycreds -r ghcr.io/getporter/examples/porter-hello:v0.2.0", "", "Flag --cred has been deprecated, please use credential-set instead"},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			var outBuf bytes.Buffer
 			p := buildRootCommand()
+			p.SetOut(&outBuf)
+			p.SetErr(&outBuf)
 			osargs := strings.Split(tc.args, " ")
 			cmd, args, err := p.Find(osargs)
 			require.NoError(t, err)
@@ -33,6 +46,10 @@ func TestValidateInstallCommand(t *testing.T) {
 			} else {
 				require.EqualError(t, err, tc.wantError)
 			}
+
+			if tc.wantOut != "" {
+				tests.RequireOutputContains(t, outBuf.String(), tc.wantOut)
+			}
 		})
 	}
 }
@@ -42,14 +59,19 @@ func TestValidateUninstallCommand(t *testing.T) {
 		name      string
 		args      string
 		wantError string
+		wantOut   string
 	}{
-		{"no args", "uninstall", ""},
-		{"invalid param", "uninstall --param A:B", "invalid parameter (A:B), must be in name=value format"},
+		{"no args", "uninstall mybuns", "", ""},
+		// --cred should still work, but print a message
+		{"old cred flag", "install --cred mycreds -r ghcr.io/getporter/examples/porter-hello:v0.2.0", "", "Flag --cred has been deprecated, please use credential-set instead"},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
+			var outBuf bytes.Buffer
 			p := buildRootCommand()
+			p.SetOut(&outBuf)
+			p.SetErr(&outBuf)
 			osargs := strings.Split(tc.args, " ")
 			cmd, args, err := p.Find(osargs)
 			require.NoError(t, err)
@@ -62,6 +84,10 @@ func TestValidateUninstallCommand(t *testing.T) {
 				require.NoError(t, err)
 			} else {
 				require.EqualError(t, err, tc.wantError)
+			}
+
+			if tc.wantOut != "" {
+				tests.RequireOutputContains(t, outBuf.String(), tc.wantOut)
 			}
 		})
 	}
@@ -73,8 +99,8 @@ func TestValidateInvokeCommand(t *testing.T) {
 		args      string
 		wantError string
 	}{
-		{"no args", "invoke", "--action is required"},
-		{"action specified", "invoke --action status", ""},
+		{"no action", "invoke mybuns", "--action is required"},
+		{"action specified", "invoke mybuns --action status", ""},
 	}
 
 	for _, tc := range testcases {
@@ -121,6 +147,56 @@ func TestValidateInstallationListCommand(t *testing.T) {
 			err = cmd.PreRunE(cmd, cmd.Flags().Args())
 			if tc.wantError == "" {
 				require.NoError(t, err)
+			} else {
+				require.EqualError(t, err, tc.wantError)
+			}
+		})
+	}
+}
+
+func TestBuildValidate_Driver(t *testing.T) {
+	// Do not run in parallel
+
+	testcases := []struct {
+		name         string
+		args         string
+		configDriver string // the driver set in the config
+		wantDriver   string
+		wantError    string
+	}{
+		{name: "no flag", wantDriver: "buildkit"},
+		{name: "invalid flag", args: "--driver=missing-driver", wantError: "invalid --driver value missing-driver"},
+		{name: "valid flag", args: "--driver=buildkit", wantDriver: "buildkit"},
+		{name: "invalid config", args: "", configDriver: "invalid-driver", wantError: "invalid --driver value invalid-driver"},
+		{name: "valid config", args: "", configDriver: "buildkit", wantDriver: "buildkit"}, // passing an empty flag to trigger defaulting it to the config value
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.configDriver != "" {
+				os.Setenv("PORTER_BUILD_DRIVER", tc.configDriver)
+				defer os.Unsetenv("PORTER_BUILD_DRIVER")
+			}
+
+			p := porter.NewTestPorter(t)
+			defer p.Close()
+
+			rootCmd := buildRootCommandFrom(p.Porter)
+
+			fullArgs := []string{"build", tc.args}
+			rootCmd.SetArgs(fullArgs)
+			buildCmd, _, _ := rootCmd.Find(fullArgs)
+			buildCmd.RunE = func(cmd *cobra.Command, args []string) error {
+				// noop
+				return nil
+			}
+			err := p.FileSystem.WriteFile("porter.yaml", []byte(""), pkg.FileModeWritable)
+			require.NoError(t, err)
+
+			err = rootCmd.Execute()
+			if tc.wantError == "" {
+				require.NoError(t, err)
+				assert.Equal(t, tc.wantDriver, p.Data.BuildDriver)
 			} else {
 				require.EqualError(t, err, tc.wantError)
 			}

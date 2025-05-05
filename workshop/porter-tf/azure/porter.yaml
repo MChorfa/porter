@@ -1,7 +1,7 @@
 name: workshop-tf
 version: 0.1.0
 description: "An example using Porter to build the from scratch bundle"
-tag: getporter/workshop-tf
+registry: "localhost:5000"
 
 mixins:
   - azure
@@ -23,7 +23,7 @@ credentials:
   - name: client_secret
     env: AZURE_CLIENT_SECRET
 
-## This section defines what paramters are used by the bundle. These parameters are used by various 
+## This section defines what parameters are used by the bundle. These parameters are used by various 
 ## steps within the bundle
 parameters:
   - name: location

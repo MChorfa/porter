@@ -2,37 +2,39 @@ package builder
 
 import (
 	"bufio"
+	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 
-	"get.porter.sh/porter/pkg/context"
-	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
+	"get.porter.sh/porter/pkg/runtime"
+	"get.porter.sh/porter/pkg/tracing"
+	"get.porter.sh/porter/pkg/yaml"
 )
 
 // UnmarshalAction handles unmarshaling any action, given a pointer to a slice of Steps.
 // Iterate over the results and cast back to the Steps to use the results.
-//  var steps []Step
-//	results, err := UnmarshalAction(unmarshal, &steps)
-//	if err != nil {
-//		return err
-//	}
 //
-//	for _, result := range results {
-//		step := result.(*[]Step)
-//		a.Steps = append(a.Steps, *step...)
-//	}
+//	 var steps []Step
+//		results, err := UnmarshalAction(unmarshal, &steps)
+//		if err != nil {
+//			return err
+//		}
+//
+//		for _, result := range results {
+//			step := result.(*[]Step)
+//			a.Steps = append(a.Steps, *step...)
+//		}
 func UnmarshalAction(unmarshal func(interface{}) error, builder BuildableAction) (map[string][]interface{}, error) {
-	actionMap := map[interface{}][]interface{}{}
+	actionMap := map[string][]interface{}{}
 	err := unmarshal(&actionMap)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not unmarshal yaml into an action map of exec steps")
+		return nil, fmt.Errorf("could not unmarshal yaml into an action map of exec steps: %w", err)
 	}
 
 	return unmarshalActionMap(actionMap, builder)
 }
 
-func unmarshalActionMap(actionMap map[interface{}][]interface{}, builder BuildableAction) (map[string][]interface{}, error) {
+func unmarshalActionMap(actionMap map[string][]interface{}, builder BuildableAction) (map[string][]interface{}, error) {
 	results := make(map[string][]interface{})
 	for actionIndex, stepMaps := range actionMap {
 		// Figure out the string representation of the action
@@ -69,32 +71,37 @@ func unmarshalActionMap(actionMap map[interface{}][]interface{}, builder Buildab
 // Action instance.
 //
 // Example:
-//   var action Action
-//	 err := builder.LoadAction(m.Context, opts.File, func(contents []byte) (interface{}, error) {
-//		 err := yaml.Unmarshal(contents, &action)
-//		 return &action, err
-//	 })
-func LoadAction(cxt *context.Context, commandFile string, unmarshal func([]byte) (interface{}, error)) error {
-	contents, err := readInputFromStdinOrFile(cxt, commandFile)
+//
+//	  var action Action
+//		 err := builder.LoadAction(m.Context, opts.File, func(contents []byte) (interface{}, error) {
+//			 err := yaml.Unmarshal(contents, &action)
+//			 return &action, err
+//		 })
+func LoadAction(ctx context.Context, cfg runtime.RuntimeConfig, commandFile string, unmarshal func([]byte) (interface{}, error)) error {
+	_, span := tracing.StartSpan(ctx)
+	defer span.EndSpan()
+
+	contents, err := readInputFromStdinOrFile(cfg, commandFile)
 	if err != nil {
-		return err
+		return span.Error(err)
 	}
 
-	result, err := unmarshal(contents)
-	if cxt.Debug {
-		fmt.Fprintf(cxt.Err, "DEBUG Parsed Input:\n%#v\n", result)
+	_, err = unmarshal(contents)
+	if err != nil {
+		return span.Error(fmt.Errorf("could not unmarshal input:\n %s: %w", string(contents), err))
 	}
-	return errors.Wrapf(err, "could unmarshal input:\n %s", string(contents))
+
+	return nil
 }
 
-func readInputFromStdinOrFile(cxt *context.Context, commandFile string) ([]byte, error) {
+func readInputFromStdinOrFile(cfg runtime.RuntimeConfig, commandFile string) ([]byte, error) {
 	var b []byte
 	var err error
 	if commandFile == "" {
-		reader := bufio.NewReader(cxt.In)
-		b, err = ioutil.ReadAll(reader)
+		reader := bufio.NewReader(cfg.In)
+		b, err = io.ReadAll(reader)
 	} else {
-		b, err = cxt.FileSystem.ReadFile(commandFile)
+		b, err = cfg.FileSystem.ReadFile(commandFile)
 	}
 
 	if err != nil {
@@ -102,7 +109,7 @@ func readInputFromStdinOrFile(cxt *context.Context, commandFile string) ([]byte,
 		if commandFile == "" {
 			source = commandFile
 		}
-		return nil, errors.Wrapf(err, "could not load input from %s", source)
+		return nil, fmt.Errorf("could not load input from %s: %w", source, err)
 	}
 	return b, nil
 }

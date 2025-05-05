@@ -7,6 +7,8 @@ description: Run commands using the docker-compose CLI.
 
 This is a mixin for Porter that provides the Docker Compose (docker-compose) CLI.
 
+Source: https://github.com/getporter/docker-compose-mixin
+
 ### Install or Upgrade
 ```
 porter mixin install docker-compose
@@ -28,18 +30,18 @@ not the container should run as privileged or not:
 
 ```yaml
 required:
-  - docker
+  - docker:
       privileged: false
 ```
 
 Declaring this extension as required is a great way to let potential users of
 your bundle know that Docker access is necessary to install.
 
-See more information via the [Porter documentation](/author-bundles/#docker).
+See more information via the [Porter documentation](/docs/bundle/manifest/#docker).
 
 ## Mixin Syntax
 
-See the [docker-compose CLI Command Reference](https://docs.docker.com/docker-compose/reference/) for the supported commands.
+See the [docker-compose CLI Command Reference](https://docs.docker.com/compose/reference/) for the supported commands.
 
 ```yaml
 docker-compose:
@@ -110,7 +112,7 @@ The `path` output saves the content of the specified file path to an output.
 ```yaml
 outputs:
 - name: kubeconfig
-  path: /root/.kube/config
+  path: /home/nonroot/.kube/config
 ```
 
 ---
@@ -145,7 +147,7 @@ See full bundle examples in the `examples` directory.
 
 ## Invocation
 
-Use of this mixin requires opting-in to Docker host access via a Porter setting.  See the Porter [documentation](/configuration/#allow-docker-host-access) for further details.
+Use of this mixin requires opting-in to Docker host access via a Porter setting.  See the Porter [documentation](/docs/configuration/configuration/#allow-docker-host-access) for further details.
 
 Here we opt-in via the CLI flag, `--allow-docker-host-access`:
 

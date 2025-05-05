@@ -1,14 +1,16 @@
 package mixin
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 
-	"get.porter.sh/porter/pkg/context"
 	"get.porter.sh/porter/pkg/pkgmgmt"
 	"get.porter.sh/porter/pkg/pkgmgmt/client"
+	"get.porter.sh/porter/pkg/portercontext"
+	"github.com/Masterminds/semver/v3"
 )
 
 type TestMixinProvider struct {
@@ -23,6 +25,10 @@ type TestMixinProvider struct {
 	ReturnBuildError bool
 }
 
+// hoist these into variables so tests can reference them safely
+var ExampleMixinName = "testmixin"
+var ExampleMixinSemver = semver.New(0, 1, 0, "", "")
+
 // NewTestMixinProvider helps us test Porter.Mixins in our unit tests without actually hitting any real plugins on the file system.
 func NewTestMixinProvider() *TestMixinProvider {
 	packages := []pkgmgmt.PackageMetadata{
@@ -30,6 +36,14 @@ func NewTestMixinProvider() *TestMixinProvider {
 			Name: "exec",
 			VersionInfo: pkgmgmt.VersionInfo{
 				Version: "v1.0",
+				Commit:  "abc123",
+				Author:  "Porter Authors",
+			},
+		},
+		&Metadata{
+			Name: ExampleMixinName,
+			VersionInfo: pkgmgmt.VersionInfo{
+				Version: fmt.Sprintf("v%s", ExampleMixinSemver.String()),
 				Commit:  "abc123",
 				Author:  "Porter Authors",
 			},
@@ -43,20 +57,20 @@ func NewTestMixinProvider() *TestMixinProvider {
 		},
 	}
 
-	provider.RunAssertions = []func(pkgContext *context.Context, name string, commandOpts pkgmgmt.CommandOptions) error{
-		provider.PrintExecOutput,
+	provider.RunAssertions = []func(pkgContext *portercontext.Context, name string, commandOpts pkgmgmt.CommandOptions) error{
+		provider.PrintMixinOutput,
 	}
 
 	return &provider
 }
 
-func (p *TestMixinProvider) PrintExecOutput(pkgContext *context.Context, name string, commandOpts pkgmgmt.CommandOptions) error {
+func (p *TestMixinProvider) PrintMixinOutput(pkgContext *portercontext.Context, name string, commandOpts pkgmgmt.CommandOptions) error {
 	switch commandOpts.Command {
 	case "build":
 		if p.ReturnBuildError {
 			return errors.New("encountered build error")
 		}
-		fmt.Fprintln(pkgContext.Out, "# exec mixin has no buildtime dependencies")
+		fmt.Fprintf(pkgContext.Out, "# %s mixin has no buildtime dependencies\n", name)
 	case "lint":
 		b, _ := json.Marshal(p.LintResults)
 		fmt.Fprintln(pkgContext.Out, string(b))
@@ -64,7 +78,16 @@ func (p *TestMixinProvider) PrintExecOutput(pkgContext *context.Context, name st
 	return nil
 }
 
-func (p *TestMixinProvider) GetSchema(name string) (string, error) {
-	b, err := ioutil.ReadFile("../exec/schema/exec.json")
+func (p *TestMixinProvider) GetSchema(ctx context.Context, name string) (string, error) {
+	var schemaFile string
+	switch name {
+	case "exec":
+		schemaFile = "../exec/schema/exec.json"
+	case ExampleMixinName:
+		schemaFile = "../../cmd/testmixin/schema.json"
+	default:
+		return "", nil
+	}
+	b, err := os.ReadFile(schemaFile)
 	return string(b), err
 }

@@ -1,6 +1,7 @@
 package query
 
 import (
+	"context"
 	"testing"
 
 	"get.porter.sh/porter/pkg/config"
@@ -13,7 +14,7 @@ func TestManifestGenerator_BuildInput(t *testing.T) {
 	c := config.NewTestConfig(t)
 	c.TestContext.AddTestFile("testdata/porter.yaml", config.Name)
 
-	m, err := manifest.LoadManifestFrom(c.Context, config.Name)
+	m, err := manifest.LoadManifestFrom(context.Background(), c.Config, config.Name)
 	require.NoError(t, err, "could not load manifest")
 
 	g := ManifestGenerator{Manifest: m}
@@ -39,6 +40,6 @@ func TestManifestGenerator_BuildInput(t *testing.T) {
 
 	t.Run("with config", func(t *testing.T) {
 		input := g.buildInputForMixin("az")
-		assert.Equal(t, map[interface{}]interface{}{"extensions": []interface{}{"iot"}}, input.Config, "az mixin should have config")
+		assert.Equal(t, map[string]interface{}{"extensions": []interface{}{"iot"}}, input.Config, "az mixin should have config")
 	})
 }

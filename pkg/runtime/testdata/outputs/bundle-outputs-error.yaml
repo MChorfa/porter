@@ -1,22 +1,26 @@
-mixins:
-- helm
-
+schemaVersion: 1.0.0
 name: outputs
 version: 0.1.0
-tag: getporter/outputs-example
+registry: "localhost:5000"
+
+mixins:
+  - helm3:
+      repositories:
+        bitnami:
+          url: "https://charts.bitnami.com/bitnami"
 
 credentials:
 - name: kubeconfig
-  path: /root/.kube/config
+  path: /home/nonroot/.kube/config
 
 install:
-- helm:
+- helm3:
     description: "Install MySQL"
     name: test-mysql
-    chart: stable/mysql
+    chart: bitnami/mysql
     set:
-      mysqlDatabase: test-mysql-db
-      mysqlUser: test-mysql-user
+      db.name: test-mysql-db
+      db.user: test-mysql-user
     outputs:
     - name: mysql-root-password
       secret: test-mysql
@@ -26,7 +30,7 @@ install:
       key: mysql-password
 
 uninstall:
-- helm:
+- helm3:
     description: "Uninstall MySQL"
     purge: true
     releases:
